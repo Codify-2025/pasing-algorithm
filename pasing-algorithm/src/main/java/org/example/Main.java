@@ -13,7 +13,12 @@ public class Main {
         int add(int a, int b) {
             return a + b;
         }
-
+        //주석 1
+        
+        /*
+        주석 2
+        */
+        
         int main() {
             int x = 5;
             int y = 10;
