@@ -53,6 +53,85 @@ public class Parser {
         parsingTable.put("EOF", "ACCEPT");
     }
 
+    //method
+
+    //연산자 우선순위 함수
+    public static int precedence(String op) {
+        switch (op) {
+            case "=": return 1;
+            case "+": case "-": return 2;
+            case "*": case "/": return 3;
+            default: return 0;
+        }
+    }
+
+    //연산자 판별 함수
+    public static boolean isOperator(String value) {
+        return value.equals("=") || value.equals("+") || value.equals("-")
+                || value.equals("*") || value.equals("/");
+    }
+
+    //연산자 탐색 함수
+    public static ASTNode buildExpressionTree(Stack<ASTNode> tempStack) {
+        Stack<ASTNode> nodeStack = new Stack<>();
+        Stack<String> opStack = new Stack<>();
+
+        while (!tempStack.isEmpty()) {
+            ASTNode stmtNode = tempStack.pop();
+            if (isOperator(stmtNode.value)) {
+                while (!opStack.isEmpty() && precedence(opStack.peek()) >= precedence(stmtNode.value)) {
+                    String op = opStack.pop();
+                    ASTNode right= nodeStack.pop();
+                    ASTNode left = nodeStack.pop();
+                    ASTNode opNode;
+
+                    if (op.equals("=")) {
+                        opNode = new ASTNode("InitExpr", op, stmtNode.line);
+                    }else{
+                        opNode = new ASTNode("BinaryExpr", op, stmtNode.line);
+                    }
+
+                    opNode.addChild(left);
+                    opNode.addChild(right);
+                    nodeStack.push(opNode);
+                }
+                opStack.push(stmtNode.value);
+            }else{
+
+                System.out.println("stmtNode.value = " + stmtNode.value + ", type = " + stmtNode.type);
+
+                if (stmtNode.type.equals("IDENT")) {
+                    stmtNode.type = "VariableName";
+                } else if (stmtNode.type.equals("NUMBER")) {
+                    stmtNode.type = "Literal";
+                } else {
+                    stmtNode.type = "Type";
+                }
+
+                nodeStack.push(stmtNode);
+            }
+        }
+        while (!opStack.isEmpty()) {
+            String op = opStack.pop();
+            ASTNode right = nodeStack.pop();
+            ASTNode left = nodeStack.pop();
+            ASTNode opNode;
+            if (op.equals("=")) {
+                opNode = new ASTNode("InitExpr", op, left.line);
+            }else{
+                opNode = new ASTNode("BinaryExpr", op, left.line);
+            }
+            opNode.addChild(left);
+            opNode.addChild(right);
+            nodeStack.push(opNode);
+        }
+
+
+        return nodeStack.pop();
+    }
+
+
+
     public static ASTNode parse(List<Tokenizer.Token> tokens) {
 
         Stack<ASTNode> astStack = new Stack<>(); // AST tree 저장 stack
@@ -71,7 +150,9 @@ public class Parser {
             } else if (action.equals("R_Close")) {
                 //stack에 저장된 keyword가 있는지 없는지 보고 결정
                 List<ASTNode> content = new ArrayList<>(); //괄호 안 내용 임시 저장 리스트
-                while (!tempStack.isEmpty()) {
+                //break를 통해 제어
+                //추후에 true를 바꿀 수도 있음
+                while (true) {
                     ASTNode node = tempStack.pop();
                     if (node.value.equals("(")) { // ( 만나면 (앞의 토큰 확인
                         ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
@@ -109,13 +190,15 @@ public class Parser {
                             DeclarationNode.addChild(methodName);       // Name
                             DeclarationNode.addChild(paramList);        // ParameterList
 
+                            //MethodDeclaration 관련 작업 완료했으니 tempStack을 비우기
+                            tempStack.clear();
+
                             Tokenizer.Token nextToken = tokens.get(i + 1);
                             if (nextToken.value.equals("{")) {
                                 ASTNode blockNode = new ASTNode("BlockStmt", null, nextToken.line);
                                 i += 2;
 
-                                List<ASTNode> statementContent = new ArrayList<>();
-
+//                                List<ASTNode> statementContent = new ArrayList<>();
                                 while (i < tokens.size()) {
                                     Tokenizer.Token innerToken = tokens.get(i);
                                     String innerKey = innerToken.type;
@@ -123,24 +206,28 @@ public class Parser {
                                     String innerAction = parsingTable.getOrDefault(innerKey, "ERROR");
 
                                     if (innerToken.value.equals("}")) break;
-
-
+                                    //세미콜론 만났을때 작업
+                                    //연산자 우선순위에 따라 파싱
                                     if (innerAction.equals("R_Stmt")) {
+                                        ASTNode exprTree = buildExpressionTree(tempStack);
+                                        blockNode.addChild(exprTree);
+
 //                                        ASTNode stmtNode = new ASTNode("Statement", null, innerToken.line);
 //                                        statementContent.forEach(stmtNode::addChild);
 //                                        blockNode.addChild(stmtNode);
-                                        ASTNode stmtNode = new ASTNode("VariableDeclaration", null, innerToken.line);
-                                        int j = statementContent.size()-1;
-                                        while (j >= 0) {
-                                            ASTNode innerNode = statementContent.get(j);
-
-
-                                            j--;
-                                        }
-
-                                        statementContent.clear();
+//                                        ASTNode stmtNode = new ASTNode("VariableDeclaration", null, innerToken.line);
+//                                        int j = statementContent.size()-1;
+//                                        while (j >= 0) {
+//                                            ASTNode innerNode = statementContent.get(j);
+//
+//
+//                                            j--;
+////                                        }
+//
+//                                        statementContent.clear();
                                     } else if (innerAction.equals("S")) {
-                                        statementContent.add(new ASTNode(innerToken.type, innerToken.value, innerToken.line));
+                                        tempStack.add(new ASTNode(innerToken.type, innerToken.value, innerToken.line));
+//                                        statementContent.add(new ASTNode(innerToken.type, innerToken.value, innerToken.line));
                                     }
                                     i++;
                                 }
