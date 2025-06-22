@@ -25,6 +25,40 @@ public class Tokenizer {
             "true", "false", "sizeof", "include", "typedef", "inline", "enum"
     ));
 
+    private static final Set<String> TYPE = new HashSet<>(Arrays.asList(
+            //type
+            "int", "char", "float", "double", "bool", "void"
+    ));
+
+    private static final Set<String> CONTROL = new HashSet<>(Arrays.asList(
+            //조건, 반복, 결과
+            "if", "else", "while", "for", "do", "switch", "case", "default",
+            "break", "continue", "return", "goto"
+    ));
+
+    private static final Set<String> IO = new HashSet<>(Arrays.asList(
+            //입출력
+            "cin", "cout", "endl"
+    ));
+
+    private static final Set<String> ACCESS = new HashSet<>(Arrays.asList(
+            "public", "private", "protected"
+    ));
+
+    private static final Set<String> CXX = new HashSet<>(Arrays.asList(
+            "class", "struct",
+            "new", "delete", "this", "namespace", "using",
+            "const", "static", "virtual"
+    ));
+
+    private static final Set<String> EXCEPTION = new HashSet<>(Arrays.asList(
+            "try", "catch", "throw"
+    ));
+
+    private static final Set<String> OTHERS = new HashSet<>(Arrays.asList(
+            "true", "false", "sizeof", "include", "typedef", "inline", "enum"
+    ));
+
     //단어가 예약어인지 확인하는 method -> KEYWORD에 포함되어 있다면 true, 없다면 false
     private static boolean isKeyword(String word) {
         return KEYWORDS.contains(word);
@@ -189,7 +223,26 @@ public class Tokenizer {
                             column++;
                         }
                         String value = sb.toString();
-                        String type = isKeyword(value) ? "KEYWORD" : "IDENT";
+//                        String type = isKeyword(value) ? "KEYWORD" : "IDENT";
+                        //구조체는 따로 빼기
+                        String type;
+                        if (TYPE.contains(value)) {
+                            type = "TYPE";
+                        } else if (CONTROL.contains(value)) {
+                            type = "CONTROL";
+                        } else if (IO.contains(value)) {
+                            type = "IO";
+                        } else if (ACCESS.contains(value)) {
+                            type = "ACCESS";
+                        } else if (CXX.contains(value)) {
+                            type = "CXX";
+                        } else if (EXCEPTION.contains(value)) {
+                            type = "EXCEPTION";
+                        } else if (OTHERS.contains(value)) {
+                            type = "OTHERS";
+                        } else {
+                            type = "IDENT";
+                        }
                         tokens.add(new Token(type, value, line, startColumn));
                         continue;
                     }
