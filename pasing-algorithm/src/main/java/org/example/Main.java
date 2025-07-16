@@ -1,10 +1,21 @@
 package org.example;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import java.util.List;
 
+import static org.example.Parser.parse;
 import static org.example.Tokenizer.tokenize;
 
 public class Main {
+
+    public static void printAST(Parser.ASTNode node, String indent) {
+        System.out.println(indent + "Type: " + node.type + ", Value: " + node.value);
+        for (Parser.ASTNode child : node.childern) {
+            printAST(child, indent + "  "); // 들여쓰기 증가
+        }
+    }
     public static void main(String[] args) {
         String code = """
         #include <iostream>
@@ -38,10 +49,27 @@ public class Main {
         }
         """;
 
-        List<Tokenizer.Token> tokens = tokenize(code);
+        String code2 = """
+        int add(int a, int b) {
+            int k = 0;
+            k = 1 + 2;
+        }
+        """;
+
+        List<Tokenizer.Token> tokens = tokenize(code2);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
-        System.out.println("Hello world!");
+        System.out.println("parsing");
+
+        Parser.ASTNode astNode = parse(tokens);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String json = gson.toJson(astNode);
+
+        System.out.println(json);
+
+        System.out.println("=== 최종 AST 구조 ===");
+        printAST(astNode, "");
+
     }
 }

@@ -109,6 +109,8 @@ public class Parser {
                 }
 
                 nodeStack.push(stmtNode);
+                ASTNode store = nodeStack.peek();
+                System.out.println("nodeStack.value = " + store.value + ", type = " + store.type);
             }
         }
         while (!opStack.isEmpty()) {
@@ -128,6 +130,37 @@ public class Parser {
 
 
         return nodeStack.pop();
+    }
+
+    public static ASTNode buildInitExprTree(Stack<ASTNode> tempStack) {
+        Stack<ASTNode> reversed = new Stack<>();
+        while (!tempStack.isEmpty()) reversed.push(tempStack.pop());
+
+        Stack<ASTNode> leftStack = new Stack<>();
+        Stack<ASTNode> rightStack = new Stack<>();
+        boolean foundEqual = false;
+
+        while (!reversed.isEmpty()) {
+            ASTNode node = reversed.pop();
+            if (!foundEqual && node.value.equals("=")) {
+                foundEqual = true;
+            } else if (!foundEqual) {
+                leftStack.push(node); // VariableName
+            } else {
+                rightStack.push(node); // Expression after '='
+            }
+        }
+
+        ASTNode left = leftStack.pop();
+        left.type = "VariableName";
+
+        ASTNode rightExpr = buildExpressionTree(rightStack); // 기존 함수를 재사용
+
+        ASTNode assign = new ASTNode("InitExpr", "=", left.line);
+        assign.addChild(left);
+        assign.addChild(rightExpr);
+
+        return assign;
     }
 
 
@@ -161,7 +194,7 @@ public class Parser {
                         if (prev.type.equals("CONTROL") && (prev.value.equals("if") || prev.value.equals("for") || prev.value.equals("while"))) {
                             DeclarationNode = new ASTNode(prev.value.substring(0,1).toUpperCase() + prev.value.substring(1)+ "Stmt", null, token.line);
                             tempStack.pop();
-                        }else {
+                        }else { // 아니라면 함수
                             // ( 이전 내용들을 paramList 객체 children으로 저장
                             ASTNode paramList = new ASTNode("ParameterList", null, token.line);
                             Collections.reverse(content);
@@ -205,31 +238,19 @@ public class Parser {
                                     if (innerToken.type.equals("SYMBOL")) innerKey += ":" + innerToken.value;
                                     String innerAction = parsingTable.getOrDefault(innerKey, "ERROR");
 
-                                    if (innerToken.value.equals("}")) break;
-                                    //세미콜론 만났을때 작업
-                                    //연산자 우선순위에 따라 파싱
-                                    if (innerAction.equals("R_Stmt")) {
-                                        ASTNode exprTree = buildExpressionTree(tempStack);
-                                        blockNode.addChild(exprTree);
-
-//                                        ASTNode stmtNode = new ASTNode("Statement", null, innerToken.line);
-//                                        statementContent.forEach(stmtNode::addChild);
-//                                        blockNode.addChild(stmtNode);
-//                                        ASTNode stmtNode = new ASTNode("VariableDeclaration", null, innerToken.line);
-//                                        int j = statementContent.size()-1;
-//                                        while (j >= 0) {
-//                                            ASTNode innerNode = statementContent.get(j);
-//
-//
-//                                            j--;
-////                                        }
-//
-//                                        statementContent.clear();
-                                    } else if (innerAction.equals("S")) {
-                                        tempStack.add(new ASTNode(innerToken.type, innerToken.value, innerToken.line));
-//                                        statementContent.add(new ASTNode(innerToken.type, innerToken.value, innerToken.line));
+                                    if (innerToken.value.equals("}")) {
+                                        break;
                                     }
-                                    i++;
+
+                                    if (innerAction.equals("S")) {
+                                        tempStack.push(new ASTNode(innerToken.type, innerToken.value, innerToken.line)); //tempstack에 token push
+                                        i++;
+                                    }else if (innerAction.equals("R_Stmt")){
+                                        ASTNode exprTree = buildInitExprTree(tempStack);
+                                        blockNode.addChild(exprTree);
+                                        tempStack.clear();
+                                        i++;
+                                    }
                                 }
                                 DeclarationNode.addChild(blockNode);
                                 astStack.push(DeclarationNode);
