@@ -186,22 +186,28 @@ public class Parser {
             if (action.equals("S")) {
                 tempStack.push(new ASTNode(token.type, token.value, token.line)); //tempstack에 token push
                 i++;
-            } else if (action.equals("R_Close")) {
-                //stack에 저장된 keyword가 있는지 없는지 보고 결정
-                List<ASTNode> content = new ArrayList<>(); //괄호 안 내용 임시 저장 리스트
-                //break를 통해 제어
-                //추후에 true를 바꿀 수도 있음
+            } else if (action.equals("R_Close")) { // 소괄호 닫기에 해당하는 ) 토큰이 나왔을 경우의 동작
+                //()안의 토큰들 임시 저장 리스트 content
+                List<ASTNode> content = new ArrayList<>();
+
+                //소괄호 안의 내용들 파싱 후 함수, 조건문의 케이스에 따라 각각의 작업 수행
                 while (true) {
                     ASTNode node = tempStack.pop();
+
+                    // ( 토큰을 만나면 ( 바로 이전 인덱스의 토큰 확인
                     if (node.value.equals("(")) { // ( 만나면 (앞의 토큰 확인
                         ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
                         ASTNode DeclarationNode;
-                        //( 앞의 토큰이 조건문이라면
+
+                        //A. ( 앞의 토큰이 조건문에 해당한다면
                         if (prev.type.equals("CONTROL") && (prev.value.equals("if") || prev.value.equals("for") || prev.value.equals("while"))) {
                             DeclarationNode = new ASTNode(prev.value.substring(0,1).toUpperCase() + prev.value.substring(1)+ "Stmt", null, token.line);
                             tempStack.pop();
-                        }else { // 아니라면 함수
-                            // ( 이전 내용들을 paramList 객체 children으로 저장
+                        }else { //B. ( 앞의 토큰이 조건문에 해당하지 않는다면 함수
+                            //1. 소괄호 안의 토큰(함수의 파라미터)들 파싱
+                            //소괄호 토큰 ( 이후 인덱스에 해당하는 토큰들(파라미터)을 paramList ASTNode객체의 children으로 추가
+                            //소괄호 안의 함수의 파라미터들은 함수의 인수 -> type-value 형태로 정해져 있음
+                            //함수 호출의 경우 추후에 따로 케이스 나누기. 현재는 함수의 정의라 생각하고 진행
                             ASTNode paramList = new ASTNode("ParameterList", null, token.line);
                             Collections.reverse(content);
                             for (int j = 0; j < content.size() - 1; j += 2) {
@@ -216,14 +222,14 @@ public class Parser {
                                 param.addChild(identNode);
                                 paramList.addChild(param);
                             }
-
+                            //2. 함수의 타입, 이름 파싱
+                            //소괄호 토큰 ( 이전 인덱스에 해당하는 토큰들 -> 함수의 type, name 토큰들로 tempStack에 담겨 있음
                             ASTNode methodName = tempStack.pop();
                             methodName.type = "MethodName";
                             ASTNode methodType = tempStack.pop();
                             methodType.type = "Type";
 
-//                            ASTNode parentNode = astStack.peek();
-
+                            //methodDeclaration 노드의 child로 parameterList, MethodName, MethodType 추가
                             DeclarationNode = new ASTNode("MethodDeclaration", null, token.line);
                             DeclarationNode.addChild(methodType);       // Type
                             DeclarationNode.addChild(methodName);       // Name
@@ -232,16 +238,17 @@ public class Parser {
                             //MethodDeclaration 관련 작업 완료했으니 tempStack을 비우기
                             tempStack.clear();
 
-                            //MethodDeclaration 이후 괄호 안 함수 정의한 내용들 파싱하는 로직
+                            //3. MethodDeclaration 이후 {}안의 내용들 파싱
                             Tokenizer.Token nextToken = tokens.get(i + 1);
+                            // 다음 토큰이 { 이라면 { 안의 토큰들 파싱
                             if (nextToken.value.equals("{")) {
                                 ASTNode blockNode = new ASTNode("BlockStmt", null, nextToken.line);
                                 i += 2;
 
-//                                List<ASTNode> statementContent = new ArrayList<>();
                                 while (i < tokens.size()) {
                                     Tokenizer.Token innerToken = tokens.get(i);
                                     String innerKey = innerToken.type;
+                                    // } 토큰을 만나면 while loop에서 빠져나감
                                     if (innerToken.type.equals("SYMBOL")) innerKey += ":" + innerToken.value;
                                     String innerAction = parsingTable.getOrDefault(innerKey, "ERROR");
 
@@ -249,28 +256,33 @@ public class Parser {
                                         break;
                                     }
 
+                                    //3-1. S action -> tempstack에 token push
                                     if (innerAction.equals("S")) {
                                         tempStack.push(new ASTNode(innerToken.type, innerToken.value, innerToken.line)); //tempstack에 token push
                                         i++;
-                                    }else if (innerAction.equals("R_Stmt")){
-                                        // 먼저 인덱싱을 통해 스택의 정보 확인하여 어떤 parentNode로 파싱할지 결정
+                                    }else if (innerAction.equals("R_Stmt")){ //3-2. ; 을 만난경우 tempStack에 쌓인 토큰들을 파싱 후 blockNode의 child로 추가
+
+                                        // token의 정보 확인 후 변수 선언인지, 변수 호출인지 확인
+                                        // 함수 호출, 선언은 나중에 추가
                                         ASTNode firstNode = tempStack.get(0);
                                         ASTNode secondNode = tempStack.get(1);
 
-                                        //기본적으로는 변수 선언이 젤 많을듯
-                                        //TYPE에 해당한다면 variableDeclaration
+                                        //변수 선언이 대부분 제일 많이 존재해 Default로 가정. 다른 조건을 보고 해당하지 않는다면 variableName
                                         ASTNode innerParent = new ASTNode("VariableDeclaration",null, firstNode.line);
 
                                         if (firstNode.type == "STRING" || firstNode.type == "IDENT") {
                                             innerParent.type = "variableName";
                                         }
-                                        // ; 을 만난다면 tempStack의 내용을 파싱 후 blockNode의 child로 추가하기
-                                        // = 이전 -> left stack, = 이후 -> right stack. = 이후의 요소는 InitExpr의 child node
+                                        // tempStack에 들어있는 토큰들(;토큰 만나기 전 내용들) 파싱 후 innerParentNode의 child로 추가
+                                        // = 이전 인덱스에 해당하는 토큰 -> left stack, = 이후 인덱스에 해당하는 토큰 -> right stack
+                                        //rightStack은 InitExpr의 childNode
                                         Stack<ASTNode> reversed = new Stack<>();
+
                                         //tempStack의 내용을 reversed Stack으로 push -> 뒤집어서 다시 left,right stack에 넣어야 tempStack에 넣어진 순서 유지 가능
                                         while (!tempStack.isEmpty()) {
                                             reversed.push(tempStack.pop());
                                         }
+                                        // = 토큰 기준으로 leftStack, rightStack으로 나누는 로직
                                         Stack<ASTNode> leftStack = new Stack<>();
                                         Stack<ASTNode> rightStack = new Stack<>();
                                         boolean foundEqual = false;
@@ -286,11 +298,14 @@ public class Parser {
                                             }
                                         }
 
+                                        //rightStack을 이용하여 연산자의 우선순위를 고려한 tree 생성 -> buildExpressionTree method 정의해서 사용
                                         ASTNode rightExpr = buildExpressionTree(rightStack);
-                                        ASTNode assign = new ASTNode("InitExpr", "=", rightExpr.line);
 
+                                        //InitExpr의 childNode로 rightExpr 추가
+                                        ASTNode assign = new ASTNode("InitExpr", "=", rightExpr.line);
                                         assign.addChild(rightExpr);
-                                        //leftStack의 내용을 꺼내 child로 추가
+
+                                        // leftStack의 내용을 꺼내 innerParent의 child로 추가
                                         for (int l = 0; l < leftStack.size(); l++) {
                                             ASTNode leftStackNode = leftStack.get(l);
                                             String type = leftStackNode.type;
@@ -310,7 +325,9 @@ public class Parser {
                                             innerParent.addChild(leftStackNode);
                                         }
 
+                                        //InitExpr tree를 innerParent의 childNode로 추가
                                         innerParent.addChild(assign);
+                                        //innerParent를 blockNode의 child로 추가
                                         blockNode.addChild(innerParent);
                                         tempStack.clear();
                                         i++;
