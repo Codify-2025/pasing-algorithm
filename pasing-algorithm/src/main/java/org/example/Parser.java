@@ -77,14 +77,15 @@ public class Parser {
         Stack<String> opStack = new Stack<>();
 
         while (!tempStack.isEmpty()) {
-            ASTNode stmtNode = tempStack.pop();
-            if (isOperator(stmtNode.value)) {
-                while (!opStack.isEmpty() && precedence(opStack.peek()) >= precedence(stmtNode.value)) {
+            ASTNode stmtNode = tempStack.pop(); //stack의 원소 pop
+            if (isOperator(stmtNode.value)) { //stmtNode가 연산자라면
+                while (!opStack.isEmpty() && precedence(opStack.peek()) >= precedence(stmtNode.value)) { //연산자의 우선순위 파악
                     String op = opStack.pop();
                     ASTNode right= nodeStack.pop();
                     ASTNode left = nodeStack.pop();
                     ASTNode opNode;
 
+                    //나중에 복합 연산자 확장
                     if (op.equals("=")) {
                         opNode = new ASTNode("InitExpr", op, stmtNode.line);
                     }else{
@@ -99,20 +100,27 @@ public class Parser {
             }else{
 
                 System.out.println("stmtNode.value = " + stmtNode.value + ", type = " + stmtNode.type);
+                String stmtType = stmtNode.type;
 
-                if (stmtNode.type.equals("IDENT")) {
-                    stmtNode.type = "VariableName";
-                } else if (stmtNode.type.equals("NUMBER")) {
-                    stmtNode.type = "Literal";
-                } else {
-                    stmtNode.type = "Type";
+                switch (stmtType) {
+                    case "IDENT" -> {
+                        stmtNode.type = "VariableName";
+                    }
+                    case "NUMBER" -> {
+                        stmtNode.type = "Literal";
+                    }
+                    case "TYPE" -> {
+                        stmtNode.type = "Type";
+                    }
                 }
+
 
                 nodeStack.push(stmtNode);
                 ASTNode store = nodeStack.peek();
                 System.out.println("nodeStack.value = " + store.value + ", type = " + store.type);
             }
-        }
+        } //연산자 파악 후 노드스택에 넣는건 문제 x
+
         while (!opStack.isEmpty()) {
             String op = opStack.pop();
             ASTNode right = nodeStack.pop();
@@ -127,38 +135,36 @@ public class Parser {
             opNode.addChild(right);
             nodeStack.push(opNode);
         }
-
-
+        //nodeStack을 ASTNode형태로 리턴하면 끝날듯...
         return nodeStack.pop();
     }
 
     public static ASTNode buildInitExprTree(Stack<ASTNode> tempStack) {
-        Stack<ASTNode> reversed = new Stack<>();
-        while (!tempStack.isEmpty()) reversed.push(tempStack.pop());
+        Stack<ASTNode> reversed = new Stack<>(); //reversed stack 생성
+        while (!tempStack.isEmpty()) reversed.push(tempStack.pop()); //tempstack에 있는걸 reversed stack으로 Push -> 뒤집어짐
 
         Stack<ASTNode> leftStack = new Stack<>();
         Stack<ASTNode> rightStack = new Stack<>();
-        boolean foundEqual = false;
+        boolean foundEqual = false; //원소가 = 인지 아닌지 판별하는 boolean variable
 
-        while (!reversed.isEmpty()) {
-            ASTNode node = reversed.pop();
-            if (!foundEqual && node.value.equals("=")) {
-                foundEqual = true;
+        while (!reversed.isEmpty()) { //reversed stack이 빌 때까지 반복
+            ASTNode node = reversed.pop(); //원소 하나 pop
+            if (!foundEqual && node.value.equals("=")) { // foundEqual이 false고 연산자가 = 이라면
+                foundEqual = true; //foundEqlal을 true로 변경
             } else if (!foundEqual) {
-                leftStack.push(node); // VariableName
+                leftStack.push(node); // foundEqual이 false라면 원소들을 left stack에 저장 -> =연산자를 만나기 전의 원소들을 leftStack에 저장
             } else {
-                rightStack.push(node); // Expression after '='
+                rightStack.push(node); // Expression after '=' -> = 연산자를 만난 후 foundEqual = true -> 이 이후의 원소들은 rightStack에 저장
             }
         }
 
         ASTNode left = leftStack.pop();
+        ASTNode rightExpr = buildExpressionTree(rightStack);
         left.type = "VariableName";
-
-        ASTNode rightExpr = buildExpressionTree(rightStack); // 기존 함수를 재사용
-
         ASTNode assign = new ASTNode("InitExpr", "=", left.line);
         assign.addChild(left);
         assign.addChild(rightExpr);
+
 
         return assign;
     }
@@ -226,6 +232,7 @@ public class Parser {
                             //MethodDeclaration 관련 작업 완료했으니 tempStack을 비우기
                             tempStack.clear();
 
+                            //MethodDeclaration 이후 괄호 안 함수 정의한 내용들 파싱하는 로직
                             Tokenizer.Token nextToken = tokens.get(i + 1);
                             if (nextToken.value.equals("{")) {
                                 ASTNode blockNode = new ASTNode("BlockStmt", null, nextToken.line);
@@ -246,12 +253,70 @@ public class Parser {
                                         tempStack.push(new ASTNode(innerToken.type, innerToken.value, innerToken.line)); //tempstack에 token push
                                         i++;
                                     }else if (innerAction.equals("R_Stmt")){
-                                        ASTNode exprTree = buildInitExprTree(tempStack);
-                                        blockNode.addChild(exprTree);
+                                        // 먼저 인덱싱을 통해 스택의 정보 확인하여 어떤 parentNode로 파싱할지 결정
+                                        ASTNode firstNode = tempStack.get(0);
+                                        ASTNode secondNode = tempStack.get(1);
+
+                                        //기본적으로는 변수 선언이 젤 많을듯
+                                        //TYPE에 해당한다면 variableDeclaration
+                                        ASTNode innerParent = new ASTNode("VariableDeclaration",null, firstNode.line);
+
+                                        if (firstNode.type == "STRING" || firstNode.type == "IDENT") {
+                                            innerParent.type = "variableName";
+                                        }
+                                        // ; 을 만난다면 tempStack의 내용을 파싱 후 blockNode의 child로 추가하기
+                                        // = 이전 -> left stack, = 이후 -> right stack. = 이후의 요소는 InitExpr의 child node
+                                        Stack<ASTNode> reversed = new Stack<>();
+                                        //tempStack의 내용을 reversed Stack으로 push -> 뒤집어서 다시 left,right stack에 넣어야 tempStack에 넣어진 순서 유지 가능
+                                        while (!tempStack.isEmpty()) {
+                                            reversed.push(tempStack.pop());
+                                        }
+                                        Stack<ASTNode> leftStack = new Stack<>();
+                                        Stack<ASTNode> rightStack = new Stack<>();
+                                        boolean foundEqual = false;
+
+                                        while (!reversed.isEmpty()) {
+                                            ASTNode reverseNode = reversed.pop();
+                                            if (!foundEqual && reverseNode.value.equals("=")) {
+                                                foundEqual = true;
+                                            } else if (!foundEqual) { //= 만나기 이전
+                                                leftStack.push(reverseNode);
+                                            }else{
+                                                rightStack.push(reverseNode); //= 만난 이후
+                                            }
+                                        }
+
+                                        ASTNode rightExpr = buildExpressionTree(rightStack);
+                                        ASTNode assign = new ASTNode("InitExpr", "=", rightExpr.line);
+
+                                        assign.addChild(rightExpr);
+                                        //leftStack의 내용을 꺼내 child로 추가
+                                        for (int l = 0; l < leftStack.size(); l++) {
+                                            ASTNode leftStackNode = leftStack.get(l);
+                                            String type = leftStackNode.type;
+
+                                            switch (type) {
+                                                case "IDENT" -> {
+                                                    leftStackNode.type = "VariableName";
+                                                }
+                                                case "NUMBER" -> {
+                                                    leftStackNode.type = "Literal";
+                                                }
+                                                case "TYPE" -> {
+                                                    leftStackNode.type = "Type";
+                                                }
+                                            }
+
+                                            innerParent.addChild(leftStackNode);
+                                        }
+
+                                        innerParent.addChild(assign);
+                                        blockNode.addChild(innerParent);
                                         tempStack.clear();
                                         i++;
                                     }
                                 }
+
                                 DeclarationNode.addChild(blockNode);
                                 astStack.push(DeclarationNode);
 
