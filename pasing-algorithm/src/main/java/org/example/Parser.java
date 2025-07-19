@@ -74,29 +74,34 @@ public class Parser {
     //연산자 탐색 함수
     public static ASTNode buildExpressionTree(Stack<ASTNode> tempStack) {
         Stack<ASTNode> nodeStack = new Stack<>();
-        Stack<String> opStack = new Stack<>();
+        Stack<ASTNode> opStack = new Stack<>();
 
         while (!tempStack.isEmpty()) {
             ASTNode stmtNode = tempStack.pop(); //stack의 원소 pop
+            //if-else 문으로 연산자의 우선순위에 따라 stack에 넣음
             if (isOperator(stmtNode.value)) { //stmtNode가 연산자라면
-                while (!opStack.isEmpty() && precedence(opStack.peek()) >= precedence(stmtNode.value)) { //연산자의 우선순위 파악
-                    String op = opStack.pop();
+                while (!opStack.isEmpty() && precedence(opStack.peek().value) >= precedence(stmtNode.value)) { //연산자의 우선순위 파악
+                    //operatorNode pop
+                    ASTNode op = opStack.pop();
+                    op.type = "Operator";
+
                     ASTNode right= nodeStack.pop();
                     ASTNode left = nodeStack.pop();
                     ASTNode opNode;
 
                     //나중에 복합 연산자 확장
-                    if (op.equals("=")) {
-                        opNode = new ASTNode("InitExpr", op, stmtNode.line);
+                    if (op.value.equals("=")) {
+                        opNode = new ASTNode("InitExpr", op.value, stmtNode.line);
                     }else{
-                        opNode = new ASTNode("BinaryExpr", op, stmtNode.line);
+                        opNode = new ASTNode("BinaryExpr", null, stmtNode.line);
                     }
 
-                    opNode.addChild(left);
                     opNode.addChild(right);
+                    opNode.addChild(op);
+                    opNode.addChild(left);
                     nodeStack.push(opNode);
                 }
-                opStack.push(stmtNode.value);
+                opStack.push(stmtNode);
             }else{
 
                 System.out.println("stmtNode.value = " + stmtNode.value + ", type = " + stmtNode.type);
@@ -122,17 +127,19 @@ public class Parser {
         } //연산자 파악 후 노드스택에 넣는건 문제 x
 
         while (!opStack.isEmpty()) {
-            String op = opStack.pop();
+            ASTNode op = opStack.pop();
+            op.type = "Operator";
             ASTNode right = nodeStack.pop();
             ASTNode left = nodeStack.pop();
             ASTNode opNode;
-            if (op.equals("=")) {
-                opNode = new ASTNode("InitExpr", op, left.line);
+            if (op.value.equals("=")) {
+                opNode = new ASTNode("InitExpr", op.value, left.line);
             }else{
-                opNode = new ASTNode("BinaryExpr", op, left.line);
+                opNode = new ASTNode("BinaryExpr", null, left.line);
             }
-            opNode.addChild(left);
             opNode.addChild(right);
+            opNode.addChild(op);
+            opNode.addChild(left);
             nodeStack.push(opNode);
         }
         //nodeStack을 ASTNode형태로 리턴하면 끝날듯...
@@ -271,7 +278,7 @@ public class Parser {
                                         ASTNode innerParent = new ASTNode("VariableDeclaration",null, firstNode.line);
 
                                         if (firstNode.type == "STRING" || firstNode.type == "IDENT") {
-                                            innerParent.type = "variableName";
+                                            innerParent.type = "VariableName";
                                         }
                                         // tempStack에 들어있는 토큰들(;토큰 만나기 전 내용들) 파싱 후 innerParentNode의 child로 추가
                                         // = 이전 인덱스에 해당하는 토큰 -> left stack, = 이후 인덱스에 해당하는 토큰 -> right stack
