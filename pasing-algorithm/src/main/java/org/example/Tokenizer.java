@@ -247,6 +247,23 @@ public class Tokenizer {
                         continue;
                     }
 
+                    // 기호 및 연산자 처리
+                    if (current + 1 < code.length()) {
+                        char next = code.charAt(current + 1);
+                        String twoChar = "" + code.charAt(current) + next;
+
+                        // 두 글자 연산자 우선 처리
+                        if (twoChar.equals("&&") || twoChar.equals("||") ||
+                                twoChar.equals("==") || twoChar.equals("!=") ||
+                                twoChar.equals("<=") || twoChar.equals(">=") ||
+                                twoChar.equals("++") || twoChar.equals("--")) {
+                            tokens.add(new Token("SYMBOL", twoChar, line, column));
+                            current += 2;
+                            column += 2;
+                            continue;
+                        }
+                    }
+
                     //기호
                     if (isSymbol(c)) {
                         tokens.add(new Token("SYMBOL", Character.toString(c), line, column));
