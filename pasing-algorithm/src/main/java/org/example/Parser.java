@@ -429,8 +429,10 @@ public class Parser {
             if (action.equals("S")) {
                 tempStack.push(new ASTNode(token.type, token.value, token.line)); //tempstack에 token push
                 System.out.println("현재 index: " + i + "\n");
+                System.out.println("현재 value: " + token.value + "\n");
                 i++;
             } else if (action.equals("R_Close")) { // 소괄호 닫기에 해당하는 ) 토큰이 나왔을 경우의 동작
+                System.out.println("R_close등장\n");
                 //()안의 토큰들 임시 저장 리스트 content
                 //추후에 리스트가 아니라 stack으로 리팩토링 후 연산자 함수 buildExpressionTree 활용하기 or stack이 아닌 deque로 리팩토링..
                 List<ASTNode> content = new ArrayList<>();
@@ -441,8 +443,9 @@ public class Parser {
 
                     // ( 토큰을 만나면 ( 바로 이전 인덱스의 토큰 확인
                     if (node.value.equals("(")) { // ( 만나면 (앞의 토큰 확인
-//                        ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
-                        ASTNode prev = tempStack.pop(); //스택의 가장 위 element 반환
+                        System.out.println("( 토큰을 만남\n");
+                        ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
+//                        ASTNode prev = tempStack.pop(); //스택의 가장 위 element 반환
 
                         ASTNode DeclarationNode;
 
@@ -453,12 +456,15 @@ public class Parser {
 
                             if (prev.value.equals("if")) {
                                 DeclarationNode = new ASTNode("IfStmt", null, token.line);
+                                tempStack.pop();
 
                             } else if (prev.value.equals("for")) {
                                 DeclarationNode = new ASTNode("ForStmt", null, token.line);
+                                tempStack.pop();
 
                             } else if (prev.value.equals("while")) {
                                 DeclarationNode = new ASTNode("WhileStmt", null, token.line);
+                                tempStack.pop();
 
                                 // 2.()안의 조건 토큰들 파싱하고 whileChdild의 child로 추가
                                 //; 기준이 아닌 ( 토큰 만날 때 까지 파싱 -> ()안의 임시 저장 리스트 content의 토큰들 파싱
