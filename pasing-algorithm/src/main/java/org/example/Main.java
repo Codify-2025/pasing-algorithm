@@ -56,7 +56,14 @@ public class Main {
         }
         """;
 
-        List<Tokenizer.Token> tokens = tokenize(code2);
+        String code3 = """
+        while (a > 0 && b < 10) {
+            int k;
+            k++;
+        }
+        """;
+
+        List<Tokenizer.Token> tokens = tokenize(code3);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
