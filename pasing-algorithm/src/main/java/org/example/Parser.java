@@ -94,6 +94,10 @@ public class Parser {
                 || value.equals("==") || value.equals("!=") || value.equals("<") || value.equals(">") || value.equals("<=") || value.equals(">=");
     }
 
+    public static boolean isUnaryExpr(String value) {
+        return value.equals("++") || value.equals("--") || value.equals("!");
+    }
+
     //연산자 탐색 함수
     public static ASTNode buildExpressionTree(Stack<ASTNode> tempStack) {
         Stack<ASTNode> nodeStack = new Stack<>();
@@ -112,10 +116,11 @@ public class Parser {
                     ASTNode left = nodeStack.pop();
                     ASTNode opNode;
 
-                    //나중에 복합 연산자 확장
                     if (op.value.equals("=")) {
                         opNode = new ASTNode("InitExpr", op.value, stmtNode.line);
-                    }else{
+                    } else if (op.value.equals("!") || op.value.equals("++") || op.value.equals("--")) {
+                        opNode = new ASTNode("UnaryExpr", null, stmtNode.line);
+                    } else {
                         opNode = new ASTNode("BinaryExpr", null, stmtNode.line);
                     }
 
@@ -296,30 +301,29 @@ public class Parser {
             //3-1. S action -> tempstack에 token push
             if (innerAction.equals("S")) {
                 blockStack.push(new ASTNode(innerToken.type, innerToken.value, innerToken.line));
-                System.out.println("blockStack에 " + innerToken.value + "push 완료\n");
                 i++;
             } else if (innerAction.equals("R_Stmt")) {//3-2. ; 을 만난경우 tempStack에 쌓인 토큰들을 파싱 후 blockNode의 child로 추가
                 // token의 정보 확인 후 변수 선언인지, 변수 호출인지 확인
                 // 함수 호출, 선언은 나중에 추가
-                System.out.println(";값을 만나 처리 로직 시작\n");
                 ASTNode firstNode = blockStack.get(0);
                 ASTNode secondNode = blockStack.get(1);
-
                 //변수 선언이 대부분 제일 많이 존재해 Default로 가정. 다른 조건을 보고 해당하지 않는다면 variableName
-                System.out.println("1. 변수 선언 vs 변수 이름\n");
                 ASTNode innerParent = new ASTNode("VariableDeclaration",null, firstNode.line);
 
-                if (firstNode.type == "STRING" || firstNode.type == "IDENT") {
+                if (firstNode.type.equals("IDENT") && isUnaryExpr(secondNode.value)) {
+                    innerParent.type = "UnaryExpr";
+                } else if (firstNode.type.equals("IDENT")) {
                     innerParent.type = "VariableName";
+                } else if (firstNode.value.equals("return")) {
+                    innerParent.type = "ReturnStmt";
                 }
+
                 // tempStack에 들어있는 토큰들(;토큰 만나기 전 내용들) 파싱 후 innerParentNode의 child로 추가
                 // = 이전 인덱스에 해당하는 토큰 -> left stack, = 이후 인덱스에 해당하는 토큰 -> right stack
                 //rightStack은 InitExpr의 childNode
-                System.out.println("reversed stack 선언\n");
                 Stack<ASTNode> reversed = new Stack<>();
 
                 //tempStack의 내용을 reversed Stack으로 push -> 뒤집어서 다시 left,right stack에 넣어야 tempStack에 넣어진 순서 유지 가능
-                System.out.println("reverd stack에 값 넣기\n");
                 while (!blockStack.isEmpty()) {
                     reversed.push(blockStack.pop());
                 }
@@ -328,7 +332,6 @@ public class Parser {
                 Stack<ASTNode> rightStack = new Stack<>();
                 boolean foundEqual = false;
 
-                System.out.println("left, right stack에 값 넣기\n");
                 while (!reversed.isEmpty()) {
                     ASTNode reverseNode = reversed.pop();
                     if (!foundEqual && reverseNode.value.equals("=")) {
@@ -342,17 +345,13 @@ public class Parser {
 
 
                 if (!rightStack.isEmpty()) {
-                    System.out.println("rightStack이 비어 있지 않아 = 을 이용한 경우\n");
-                    System.out.println("right stack을 parameter로 받아 buildExpression method로 tree 생성\n");
                     //rightStack을 이용하여 연산자의 우선순위를 고려한 tree 생성 -> buildExpressionTree method 정의해서 사용
                     ASTNode rightExpr = buildExpressionTree(rightStack);
 
-                    System.out.println("InitExpr childNode 생성\n");
                     //InitExpr의 childNode로 rightExpr 추가
                     ASTNode assign = new ASTNode("InitExpr", "=", rightExpr.line);
                     assign.addChild(rightExpr);
 
-                    System.out.println("leftStack의 내용을 꺼내 innerParent의 child로 추가\n");
                     // leftStack의 내용을 꺼내 innerParent의 child로 추가
                     for (int l = 0; l < leftStack.size(); l++) {
                         ASTNode leftStackNode = leftStack.get(l);
@@ -372,12 +371,11 @@ public class Parser {
                         innerParent.addChild(leftStackNode);
                     }
 
-                    System.out.println("InitExpr tree를 innerParent의 childNode로 추가\n");
                     //InitExpr tree를 innerParent의 childNode로 추가
                     innerParent.addChild(assign);
 
                 }else{
-                    System.out.println("rightStack이 비어 있는 경우");
+                    //System.out.println("rightStack이 비어 있는 경우");
                     for (int l = 0; l < leftStack.size(); l++) {
                         ASTNode leftStackNode = leftStack.get(l);
                         String type = leftStackNode.type;
@@ -400,6 +398,7 @@ public class Parser {
                         }
                         innerParent.addChild(leftStackNode);
                     }
+
                 }
 
                 System.out.println("innerParent를 blockNode의 child로 추가\n");
@@ -445,8 +444,6 @@ public class Parser {
                     if (node.value.equals("(")) { // ( 만나면 (앞의 토큰 확인
                         System.out.println("( 토큰을 만남\n");
                         ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
-//                        ASTNode prev = tempStack.pop(); //스택의 가장 위 element 반환
-
                         ASTNode DeclarationNode;
 
 
@@ -469,7 +466,6 @@ public class Parser {
                                 // 2.()안의 조건 토큰들 파싱하고 whileChdild의 child로 추가
                                 //; 기준이 아닌 ( 토큰 만날 때 까지 파싱 -> ()안의 임시 저장 리스트 content의 토큰들 파싱
                                 //괄호와 같이 묶이는 경우는 일단 패스..
-                                Collections.reverse(content);
                                 ASTNode whileChild;
                                 int j = 0;
                                 // while 문의 조건이 한 개의 원소로 이루어져 있지 않다면 -> symbol 등의 연산자를 통해 파싱
