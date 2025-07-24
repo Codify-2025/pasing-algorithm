@@ -58,12 +58,64 @@ public class Main {
 
         String code3 = """
         while (a > 0 && b < 10) {
-            int k;
             k++;
+            return k;
+        }
+        int k;
+        """;
+
+        String code4 = """
+        
+        int add(int a, int b) {
+            return a + b;
+        }
+        
+        int main() {
+            int x = 5;
+            int y = 10;
+            int sum = add(x, y);
+
+            while(x < 10) {
+                x++;
+                y++;
+            }
+
+            return 0;
         }
         """;
 
-        List<Tokenizer.Token> tokens = tokenize(code3);
+        String code5 = """
+        
+        int add(int a, int b) {
+            return a + b;
+        }
+        
+        while (a > 0 && b < 10) {
+            int k;
+            k++;
+        }
+        
+        """;
+
+        String code6 = """
+        
+        int add(int a, int b) {
+            while (a > 0 && b < 10) {
+                int k;
+                k++;
+            }  
+            return a + b;
+        }
+        """;
+
+        String code7 = """  
+        int k = 0;
+        for(int i=0; i < 3 ; i++) {
+            k++;
+            }
+        """;
+
+        List<Tokenizer.Token> tokens = tokenize(code7);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }

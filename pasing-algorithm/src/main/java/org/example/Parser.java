@@ -147,7 +147,6 @@ public class Parser {
                     }
                 }
 
-
                 nodeStack.push(stmtNode);
                 ASTNode store = nodeStack.peek();
                 System.out.println("nodeStack.value = " + store.value + ", type = " + store.type);
@@ -429,36 +428,74 @@ public class Parser {
                 tempStack.push(new ASTNode(token.type, token.value, token.line)); //tempstack에 token push
                 System.out.println("현재 index: " + i + "\n");
                 System.out.println("현재 value: " + token.value + "\n");
+                System.out.println("현재 tempstack size" + tempStack.size() + "\n");
+                System.out.println("현재 tempstack value" + tempStack.peek().value + "\n");
                 i++;
             } else if (action.equals("R_Close")) { // 소괄호 닫기에 해당하는 ) 토큰이 나왔을 경우의 동작
-                System.out.println("R_close등장\n");
                 //()안의 토큰들 임시 저장 리스트 content
                 //추후에 리스트가 아니라 stack으로 리팩토링 후 연산자 함수 buildExpressionTree 활용하기 or stack이 아닌 deque로 리팩토링..
                 List<ASTNode> content = new ArrayList<>();
-
                 //소괄호 안의 내용들 파싱 후 함수, 조건문의 케이스에 따라 각각의 작업 수행
                 while (true) {
                     ASTNode node = tempStack.pop();
 
                     // ( 토큰을 만나면 ( 바로 이전 인덱스의 토큰 확인
                     if (node.value.equals("(")) { // ( 만나면 (앞의 토큰 확인
-                        System.out.println("( 토큰을 만남\n");
                         ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
                         ASTNode DeclarationNode;
-
 
                         //A. ( 앞의 토큰이 조건문에 해당한다면
                         if (prev.type.equals("CONTROL")) {
                             //1. ( 앞의 token.value에 따라 DeclarationNode 객체 생성 후 ()안의 조건 토큰들을 child로 추가
-
                             if (prev.value.equals("if")) {
                                 DeclarationNode = new ASTNode("IfStmt", null, token.line);
                                 tempStack.pop();
 
                             } else if (prev.value.equals("for")) {
+
+                                //1. for loop의 ()안의 token들 파싱 후 Forstmt의 child로 추가
+                                Collections.reverse(content);
+                                System.out.println("Forstmt 조건 파싱 시작\n");
                                 DeclarationNode = new ASTNode("ForStmt", null, token.line);
                                 tempStack.pop();
-                                int j = 0;
+                                List<ASTNode> tempContent = new ArrayList<>();
+                                for (int j = 0; j < content.size(); j++) {
+                                    if (content.get(j).value.equals(";")) {
+                                        System.out.println("tempContent의 원소가 ;이라면: " + content.get(j).value + "\n");
+                                        System.out.println("tempContent의 size: " + tempContent.size() + "\n");
+                                        ASTNode forChildNode = buildExpressionTreeList(tempContent);
+                                        DeclarationNode.addChild(forChildNode);
+                                        tempContent.clear();
+                                    } else {
+                                        tempContent.add(content.get(j));
+                                    }
+                                }
+
+                                System.out.println("tempContent의 크기: " + tempContent.size() + "\n");
+                                if (!tempContent.isEmpty()) {
+                                    System.out.println("buildExpressionTreeList함수 실행\n");
+                                    ASTNode forChildNode = buildExpressionTreeList(tempContent);
+                                    DeclarationNode.addChild(forChildNode);
+                                }
+
+                                tempStack.clear();
+                                System.out.println("forstmt 조건 파싱 완료\n");
+
+                                //2. {}안의 내용들 파싱
+                                Tokenizer.Token nextToken = tokens.get(i + 1);
+
+                                if (nextToken.value.equals("{")) {
+                                    System.out.println("{ 안의 요소들 파싱 시작\n");
+                                    ParseResult blockNode = buildBlockNode(tokens, i+1);
+                                    DeclarationNode.addChild(blockNode.astNode);
+                                    i = blockNode.index; //리팩토링 후 i index 갱신
+                                    astStack.push(DeclarationNode);
+                                    System.out.println("{ 안의 토큰 파싱 완료\n");
+
+                                }else{
+                                    astStack.push(DeclarationNode);
+                                }
+                                tempStack.clear();
 
                             } else if (prev.value.equals("while")) {
                                 DeclarationNode = new ASTNode("WhileStmt", null, token.line);
@@ -565,87 +602,91 @@ public class Parser {
             } else if (action.equals("R_Stmt")) {
                 ASTNode firstNode = tempStack.get(0);
                 ASTNode secondNode = tempStack.get(1);
-
-                ASTNode innerParent = new ASTNode("VariableDeclaration",null, firstNode.line);
-
-                if (firstNode.type.equals("IDENT") && isUnaryExpr(secondNode.value)) {
-                    innerParent.type = "UnaryExpr";
-                } else if (firstNode.type.equals("IDENT")) {
-                    innerParent.type = "VariableName";
-                }
-
-                Stack<ASTNode> rStmtReversed = new Stack<>();
-
-                while (!tempStack.isEmpty()) {
-                    rStmtReversed.push(tempStack.pop());
-                }
-
-                Stack<ASTNode> leftStack = new Stack<>();
-                Stack<ASTNode> rightStack = new Stack<>();
-                boolean foundEqual = false;
-
-                while (!rStmtReversed.isEmpty()) {
-                    ASTNode reverseNode = rStmtReversed.pop();
-                    if (!foundEqual && reverseNode.value.equals("=")) {
-                        foundEqual = true;
-                    } else if (!foundEqual) { //= 만나기 이전
-                        leftStack.push(reverseNode);
-                    }else{
-                        rightStack.push(reverseNode); //= 만난 이후
-                    }
-                }
-
-                if (!rightStack.isEmpty()) {
-                    ASTNode rightExpr = buildExpressionTree(rightStack);
-
-                    ASTNode assign = new ASTNode("InitExpr", "=",rightExpr.line);
-                    assign.addChild(rightExpr);
-
-                    for (int l = 0; l < leftStack.size(); l++) {
-                        ASTNode leftStackNode = leftStack.get(l);
-                        String type = leftStackNode.type;
-
-                        switch (type) {
-                            case "IDENT" -> {
-                                leftStackNode.type = "VariableName";
-                            }
-                            case "NUMBER" -> {
-                                leftStackNode.type = "Literal";
-                            }
-                            case "TYPE" -> {
-                                leftStackNode.type = "Type";
-                            }
-                        }
-                        innerParent.addChild(leftStackNode);
-                    }
-                    innerParent.addChild(assign);
+                if (firstNode.value.equals("for")) {
+                    tempStack.push(new ASTNode(token.type, token.value, token.line));
+                    i++;
                 } else {
-                    for (int l = 0; l < leftStack.size(); l++) {
-                        ASTNode leftStackNode = leftStack.get(l);
-                        String type = leftStackNode.type;
+                    ASTNode innerParent = new ASTNode("VariableDeclaration",null, firstNode.line);
 
-                        switch (type) {
-                            case "IDENT" -> {
-                                leftStackNode.type = "VariableName";
-                            }
-                            case "NUMBER" -> {
-                                leftStackNode.type = "Literal";
-                            }
-                            case "TYPE" -> {
-                                leftStackNode.type = "Type";
-                            }
-                            case "SYMBOL" -> {
-                                if (isOperator(leftStackNode.value)) {
-                                    leftStackNode.type = "Operator";
+                    if (firstNode.type.equals("IDENT") && isUnaryExpr(secondNode.value)) {
+                        innerParent.type = "UnaryExpr";
+                    } else if (firstNode.type.equals("IDENT")) {
+                        innerParent.type = "VariableName";
+                    }
+
+                    Stack<ASTNode> rStmtReversed = new Stack<>();
+
+                    while (!tempStack.isEmpty()) {
+                        rStmtReversed.push(tempStack.pop());
+                    }
+
+                    Stack<ASTNode> leftStack = new Stack<>();
+                    Stack<ASTNode> rightStack = new Stack<>();
+                    boolean foundEqual = false;
+
+                    while (!rStmtReversed.isEmpty()) {
+                        ASTNode reverseNode = rStmtReversed.pop();
+                        if (!foundEqual && reverseNode.value.equals("=")) {
+                            foundEqual = true;
+                        } else if (!foundEqual) { //= 만나기 이전
+                            leftStack.push(reverseNode);
+                        }else{
+                            rightStack.push(reverseNode); //= 만난 이후
+                        }
+                    }
+
+                    if (!rightStack.isEmpty()) {
+                        ASTNode rightExpr = buildExpressionTree(rightStack);
+
+                        ASTNode assign = new ASTNode("InitExpr", "=",rightExpr.line);
+                        assign.addChild(rightExpr);
+
+                        for (int l = 0; l < leftStack.size(); l++) {
+                            ASTNode leftStackNode = leftStack.get(l);
+                            String type = leftStackNode.type;
+
+                            switch (type) {
+                                case "IDENT" -> {
+                                    leftStackNode.type = "VariableName";
+                                }
+                                case "NUMBER" -> {
+                                    leftStackNode.type = "Literal";
+                                }
+                                case "TYPE" -> {
+                                    leftStackNode.type = "Type";
                                 }
                             }
+                            innerParent.addChild(leftStackNode);
                         }
-                        innerParent.addChild(leftStackNode);
+                        innerParent.addChild(assign);
+                    } else {
+                        for (int l = 0; l < leftStack.size(); l++) {
+                            ASTNode leftStackNode = leftStack.get(l);
+                            String type = leftStackNode.type;
+
+                            switch (type) {
+                                case "IDENT" -> {
+                                    leftStackNode.type = "VariableName";
+                                }
+                                case "NUMBER" -> {
+                                    leftStackNode.type = "Literal";
+                                }
+                                case "TYPE" -> {
+                                    leftStackNode.type = "Type";
+                                }
+                                case "SYMBOL" -> {
+                                    if (isOperator(leftStackNode.value)) {
+                                        leftStackNode.type = "Operator";
+                                    }
+                                }
+                            }
+                            innerParent.addChild(leftStackNode);
+                        }
                     }
+                    astStack.push(innerParent);
+                    tempStack.clear();
+                    i++;
                 }
-                astStack.push(innerParent);
-                tempStack.clear();
-                i++;
 
             } else if (action.equals("ERROR")) {
                 ASTNode errorNode = new ASTNode("ErrorNode", token.value, token.line);
