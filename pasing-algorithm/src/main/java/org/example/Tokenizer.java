@@ -256,7 +256,8 @@ public class Tokenizer {
                         if (twoChar.equals("&&") || twoChar.equals("||") ||
                                 twoChar.equals("==") || twoChar.equals("!=") ||
                                 twoChar.equals("<=") || twoChar.equals(">=") ||
-                                twoChar.equals("++") || twoChar.equals("--")) {
+                                twoChar.equals("++") || twoChar.equals("--") ||
+                                twoChar.equals("+=") || twoChar.equals("-=")) {
                             tokens.add(new Token("SYMBOL", twoChar, line, column));
                             current += 2;
                             column += 2;

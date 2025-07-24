@@ -59,6 +59,8 @@ public class Parser {
         parsingTable.put("SYMBOL:-", "S");
         parsingTable.put("SYMBOL:--", "S");
         parsingTable.put("SYMBOL:=", "S");
+        parsingTable.put("SYMBOL:+=", "S");
+        parsingTable.put("SYMBOL:-=", "S");
         parsingTable.put("SYMBOL:==", "S");
         parsingTable.put("SYMBOL:>", "S");
         parsingTable.put("SYMBOL:>=", "S");
@@ -80,7 +82,7 @@ public class Parser {
             case "||" -> 2;
             case "&&" -> 3;
             case "==", "!=", "<", ">", "<=", ">=" -> 4;
-            case "+", "-","++","--" -> 5;
+            case "+", "-","++","--", "-=", "+=" -> 5;
             case "*", "/" -> 6;
             default -> 0;
         };
@@ -91,7 +93,8 @@ public class Parser {
         return value.equals("=") || value.equals("+") || value.equals("-") || value.equals("++") || value.equals("--")
                 || value.equals("*") || value.equals("/")
                 || value.equals("||") || value.equals("&&")
-                || value.equals("==") || value.equals("!=") || value.equals("<") || value.equals(">") || value.equals("<=") || value.equals(">=");
+                || value.equals("==") || value.equals("!=") || value.equals("<") || value.equals(">") || value.equals("<=") || value.equals(">=")
+                || value.equals("+=") || value.equals("-=");
     }
 
     public static boolean isUnaryExpr(String value) {
@@ -193,8 +196,10 @@ public class Parser {
 
                     //나중에 복합 연산자 확장
                     if (op.value.equals("=")) {
-                        opNode = new ASTNode("InitExpr", op.value, stmtNode.line);
-                    }else{
+                        opNode = new ASTNode("InitExpr", null, stmtNode.line);
+                    } else if (op.value.equals("!") || op.value.equals("++") || op.value.equals("--")) {
+                        opNode = new ASTNode("UnaryExpr", null, stmtNode.line);
+                    } else {
                         opNode = new ASTNode("BinaryExpr", null, stmtNode.line);
                     }
 
@@ -219,6 +224,11 @@ public class Parser {
                     case "TYPE" -> {
                         stmtNode.type = "Type";
                     }
+                    case "SYMBOL" -> {
+                        if (isOperator(stmtNode.value)) {
+                            stmtNode.type = "Operator";
+                        }
+                    }
                 }
 
 
@@ -236,10 +246,13 @@ public class Parser {
             ASTNode left = nodeStack.pop();
             ASTNode opNode;
             if (op.value.equals("=")) {
-                opNode = new ASTNode("InitExpr", op.value, left.line);
-            }else{
+                opNode = new ASTNode("InitExpr",null, left.line);
+            } else if (op.value.equals("!") || op.value.equals("++") || op.value.equals("--")) {
+                opNode = new ASTNode("UnaryExpr", null, left.line);
+            } else {
                 opNode = new ASTNode("BinaryExpr", null, left.line);
             }
+
             opNode.addChild(right);
             opNode.addChild(op);
             opNode.addChild(left);
@@ -461,8 +474,8 @@ public class Parser {
                                 List<ASTNode> tempContent = new ArrayList<>();
                                 for (int j = 0; j < content.size(); j++) {
                                     if (content.get(j).value.equals(";")) {
-                                        System.out.println("tempContent의 원소가 ;이라면: " + content.get(j).value + "\n");
-                                        System.out.println("tempContent의 size: " + tempContent.size() + "\n");
+                                        System.out.println("tempContentSize: " + tempContent.size() + "\n");
+                                        Collections.reverse(tempContent);
                                         ASTNode forChildNode = buildExpressionTreeList(tempContent);
                                         DeclarationNode.addChild(forChildNode);
                                         tempContent.clear();
@@ -474,7 +487,22 @@ public class Parser {
                                 System.out.println("tempContent의 크기: " + tempContent.size() + "\n");
                                 if (!tempContent.isEmpty()) {
                                     System.out.println("buildExpressionTreeList함수 실행\n");
-                                    ASTNode forChildNode = buildExpressionTreeList(tempContent);
+                                    ASTNode forChildNode;
+                                    if (tempContent.size() == 2) {
+                                        forChildNode = new ASTNode("UnaryExpr", null, tempContent.get(0).line);
+                                        for (int j = 0; j < 2; j++) {
+                                            ASTNode tempNode = tempContent.get(j);
+                                            if (tempNode.type.equals("IDENT")) {
+                                                tempNode.type = "VariableName";
+                                            } else {
+                                                tempNode.type = "Operator";
+                                            }
+                                            forChildNode.addChild(tempNode);
+                                        }
+                                    } else {
+                                        Collections.reverse(tempContent);
+                                        forChildNode = buildExpressionTreeList(tempContent);
+                                    }
                                     DeclarationNode.addChild(forChildNode);
                                 }
 
