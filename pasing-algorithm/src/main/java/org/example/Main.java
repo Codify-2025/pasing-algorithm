@@ -115,7 +115,16 @@ public class Main {
             }
         """;
 
-        List<Tokenizer.Token> tokens = tokenize(code7);
+        String code8 = """  
+        int k = 0;
+        if( k < 5) {
+            k++;
+        }else{
+            k = 0;
+        }
+        """;
+
+        List<Tokenizer.Token> tokens = tokenize(code8);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }

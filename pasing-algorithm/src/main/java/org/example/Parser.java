@@ -462,7 +462,45 @@ public class Parser {
                             //1. ( 앞의 token.value에 따라 DeclarationNode 객체 생성 후 ()안의 조건 토큰들을 child로 추가
                             if (prev.value.equals("if")) {
                                 DeclarationNode = new ASTNode("IfStmt", null, token.line);
+                                System.out.println("ifStmt 파싱 시작" + "\n");
                                 tempStack.pop();
+                                ASTNode ifChild;
+                                int j = 0;
+                                System.out.println("if ()안의 토큰들 파싱 시작" + "\n");
+                                if (content.size() > 1) {
+                                    ifChild = buildExpressionTreeList(content);
+                                } else {
+                                    ifChild = new ASTNode("VariableName", content.get(j).value, content.get(j).line);
+                                }
+                                System.out.println("if ()안의 토큰들 파싱 완료" + "\n");
+                                DeclarationNode.addChild(ifChild);
+                                tempStack.clear();
+                                //2. {}안의 내용 파싱
+                                Tokenizer.Token nextToken = tokens.get(i + 1);
+                                if (nextToken.value.equals("{")) {
+                                    System.out.println("if {} 안의 토큰들 파싱 시작" + "\n");
+                                    ParseResult blockNode = buildBlockNode(tokens, i + 1);
+                                    DeclarationNode.addChild(blockNode.astNode);
+                                    System.out.println("if {} 안의 토큰들 파싱 완료" + "\n");
+                                    i = blockNode.index;
+                                    System.out.println("index 갱신" + "\n");
+                                    astStack.push(DeclarationNode);
+                                } else {
+                                    astStack.push(DeclarationNode);
+                                }
+                                tempStack.clear();
+                                //3. else를 만났을 때의 파싱
+                                if (i + 1 < tokens.size()) {
+                                    Tokenizer.Token elseToken = tokens.get(i + 1);
+                                    if (elseToken.value.equals("else")) {
+                                        ASTNode elseDeclarationNode = new ASTNode("ElseStmt", null, elseToken.line);
+                                        ParseResult blockNode = buildBlockNode(tokens, i + 2);
+                                        elseDeclarationNode.addChild(blockNode.astNode);
+                                        i = blockNode.index;
+                                        astStack.push(elseDeclarationNode);
+                                    }
+                                    tempStack.clear();
+                                }
 
                             } else if (prev.value.equals("for")) {
 
