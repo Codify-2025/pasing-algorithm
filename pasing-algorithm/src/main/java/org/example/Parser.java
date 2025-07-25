@@ -609,20 +609,7 @@ public class Parser {
                             //소괄호 토큰 ( 이후 인덱스에 해당하는 토큰들(파라미터)을 paramList ASTNode객체의 children으로 추가
                             //소괄호 안의 함수의 파라미터들은 함수의 인수 -> type-value 형태로 정해져 있음
                             //함수 호출의 경우 추후에 따로 케이스 나누기. 현재는 함수의 정의라 생각하고 진행
-                            ASTNode paramList = new ASTNode("ParameterList", null, token.line);
-                            Collections.reverse(content);
-                            for (int j = 0; j < content.size() - 1; j += 2) {
-                                ASTNode typeNode = content.get(j);
-                                ASTNode identNode = content.get(j + 1);
 
-                                typeNode.type = "Type";
-                                identNode.type = "VariableName";
-
-                                ASTNode param = new ASTNode("Parameter", null, token.line);
-                                param.addChild(typeNode);
-                                param.addChild(identNode);
-                                paramList.addChild(param);
-                            }
                             //2. 함수의 타입, 이름 파싱
                             //소괄호 토큰 ( 이전 인덱스에 해당하는 토큰들 -> 함수의 type, name 토큰들로 tempStack에 담겨 있음
                             ASTNode methodName = tempStack.pop();
@@ -630,11 +617,31 @@ public class Parser {
                             ASTNode methodType = tempStack.pop();
                             methodType.type = "Type";
 
-                            //methodDeclaration 노드의 child로 parameterList, MethodName, MethodType 추가
-                            DeclarationNode = new ASTNode("MethodDeclaration", null, token.line);
-                            DeclarationNode.addChild(methodType);       // Type
-                            DeclarationNode.addChild(methodName);       // Name
-                            DeclarationNode.addChild(paramList);        // ParameterList
+                            if (!content.isEmpty()) {
+                                ASTNode paramList = new ASTNode("ParameterList", null, token.line);
+                                Collections.reverse(content);
+                                for (int j = 0; j < content.size() - 1; j += 2) {
+                                    ASTNode typeNode = content.get(j);
+                                    ASTNode identNode = content.get(j + 1);
+
+                                    typeNode.type = "Type";
+                                    identNode.type = "VariableName";
+
+                                    ASTNode param = new ASTNode("Parameter", null, token.line);
+                                    param.addChild(typeNode);
+                                    param.addChild(identNode);
+                                    paramList.addChild(param);
+                                }
+                                //methodDeclaration 노드의 child로 parameterList, MethodName, MethodType 추가
+                                DeclarationNode = new ASTNode("MethodDeclaration", null, token.line);
+                                DeclarationNode.addChild(methodType);       // Type
+                                DeclarationNode.addChild(methodName);       // Name
+                                DeclarationNode.addChild(paramList);        // ParameterList
+                            } else {
+                                DeclarationNode = new ASTNode("MethodDeclaration", null, token.line);
+                                DeclarationNode.addChild(methodType);       // Type
+                                DeclarationNode.addChild(methodName);       // Name
+                            }
 
                             //MethodDeclaration 관련 작업 완료했으니 tempStack을 비우기
                             tempStack.clear();

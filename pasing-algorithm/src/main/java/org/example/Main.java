@@ -124,7 +124,20 @@ public class Main {
         }
         """;
 
-        List<Tokenizer.Token> tokens = tokenize(code8);
+        String code9 = """
+        
+        int add(int a, int b) {
+            return a + b;
+        }
+        
+        int main () {
+            int k;
+            k++;
+        }
+        
+        """;
+
+        List<Tokenizer.Token> tokens = tokenize(code9);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
