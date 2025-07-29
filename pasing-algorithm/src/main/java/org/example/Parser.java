@@ -458,155 +458,156 @@ public class Parser {
                         // ( 토큰을 만나면 ( 바로 이전 인덱스의 토큰 확인
                         if (node.value.equals("(")) { // ( 만나면 (앞의 토큰 확인
                             ASTNode prev = tempStack.peek(); //스택의 가장 위 element 반환
+                            String prevValue = prev.value;
                             ASTNode DeclarationNode;
 
                             //A. ( 앞의 토큰이 조건문에 해당한다면
                             if (prev.type.equals("CONTROL")) {
-                                //1. ( 앞의 token.value에 따라 DeclarationNode 객체 생성 후 ()안의 조건 토큰들을 child로 추가
-                                if (prev.value.equals("if")) {
-                                    DeclarationNode = new ASTNode("IfStmt", null, token.line);
-                                    System.out.println("ifStmt 파싱 시작" + "\n");
-                                    tempStack.pop();
-                                    ASTNode ifChild;
-                                    int j = 0;
-                                    System.out.println("if ()안의 토큰들 파싱 시작" + "\n");
-                                    if (content.size() > 1) {
-                                        ifChild = buildExpressionTreeList(content);
-                                    } else {
-                                        ifChild = new ASTNode("VariableName", content.get(j).value, content.get(j).line);
-                                    }
-                                    System.out.println("if ()안의 토큰들 파싱 완료" + "\n");
-                                    DeclarationNode.addChild(ifChild);
-                                    tempStack.clear();
-                                    //2. {}안의 내용 파싱
-                                    Tokenizer.Token nextToken = tokens.get(i + 1);
-                                    if (nextToken.value.equals("{")) {
-                                        System.out.println("if {} 안의 토큰들 파싱 시작" + "\n");
-                                        ParseResult blockNode = buildBlockNode(tokens, i + 1);
-                                        DeclarationNode.addChild(blockNode.astNode);
-                                        System.out.println("if {} 안의 토큰들 파싱 완료" + "\n");
-                                        i = blockNode.index;
-                                        System.out.println("index 갱신" + "\n");
-                                        astStack.push(DeclarationNode);
-                                    } else {
-                                        astStack.push(DeclarationNode);
-                                    }
-                                    tempStack.clear();
-                                    //3. else를 만났을 때의 파싱
-                                    if (i + 1 < tokens.size()) {
-                                        Tokenizer.Token elseToken = tokens.get(i + 1);
-                                        if (elseToken.value.equals("else")) {
-                                            ASTNode elseDeclarationNode = new ASTNode("ElseStmt", null, elseToken.line);
-                                            ParseResult blockNode = buildBlockNode(tokens, i + 2);
-                                            elseDeclarationNode.addChild(blockNode.astNode);
+                                switch (prevValue) {
+                                    //1. ( 앞의 token.value에 따라 DeclarationNode 객체 생성 후 ()안의 조건 토큰들을 child로 추가
+                                    case "if" -> {
+                                        DeclarationNode = new ASTNode("IfStmt", null, token.line);
+                                        System.out.println("ifStmt 파싱 시작" + "\n");
+                                        tempStack.pop();
+                                        ASTNode ifChild;
+                                        int j = 0;
+                                        System.out.println("if ()안의 토큰들 파싱 시작" + "\n");
+                                        if (content.size() > 1) {
+                                            ifChild = buildExpressionTreeList(content);
+                                        } else {
+                                            ifChild = new ASTNode("VariableName", content.get(j).value, content.get(j).line);
+                                        }
+                                        System.out.println("if ()안의 토큰들 파싱 완료" + "\n");
+                                        DeclarationNode.addChild(ifChild);
+                                        tempStack.clear();
+                                        //2. {}안의 내용 파싱
+                                        Tokenizer.Token nextToken = tokens.get(i + 1);
+                                        if (nextToken.value.equals("{")) {
+                                            System.out.println("if {} 안의 토큰들 파싱 시작" + "\n");
+                                            ParseResult blockNode = buildBlockNode(tokens, i + 1);
+                                            DeclarationNode.addChild(blockNode.astNode);
+                                            System.out.println("if {} 안의 토큰들 파싱 완료" + "\n");
                                             i = blockNode.index;
-                                            astStack.push(elseDeclarationNode);
+                                            System.out.println("index 갱신" + "\n");
+                                            astStack.push(DeclarationNode);
+                                        } else {
+                                            astStack.push(DeclarationNode);
+                                        }
+                                        tempStack.clear();
+                                        //3. else를 만났을 때의 파싱
+                                        if (i + 1 < tokens.size()) {
+                                            Tokenizer.Token elseToken = tokens.get(i + 1);
+                                            if (elseToken.value.equals("else")) {
+                                                ASTNode elseDeclarationNode = new ASTNode("ElseStmt", null, elseToken.line);
+                                                ParseResult blockNode = buildBlockNode(tokens, i + 2);
+                                                elseDeclarationNode.addChild(blockNode.astNode);
+                                                i = blockNode.index;
+                                                astStack.push(elseDeclarationNode);
+                                            }
+                                            tempStack.clear();
+                                        }
+                                    }
+                                    case "for" -> {
+                                        //1. for loop의 ()안의 token들 파싱 후 Forstmt의 child로 추가
+                                        Collections.reverse(content);
+                                        System.out.println("Forstmt 조건 파싱 시작\n");
+                                        DeclarationNode = new ASTNode("ForStmt", null, token.line);
+                                        tempStack.pop();
+                                        List<ASTNode> tempContent = new ArrayList<>();
+                                        for (int j = 0; j < content.size(); j++) {
+                                            if (content.get(j).value.equals(";")) {
+                                                System.out.println("tempContentSize: " + tempContent.size() + "\n");
+                                                Collections.reverse(tempContent);
+                                                ASTNode forChildNode = buildExpressionTreeList(tempContent);
+                                                DeclarationNode.addChild(forChildNode);
+                                                tempContent.clear();
+                                            } else {
+                                                tempContent.add(content.get(j));
+                                            }
+                                        }
+
+                                        System.out.println("tempContent의 크기: " + tempContent.size() + "\n");
+                                        if (!tempContent.isEmpty()) {
+                                            System.out.println("buildExpressionTreeList함수 실행\n");
+                                            ASTNode forChildNode;
+                                            if (tempContent.size() == 2) {
+                                                forChildNode = new ASTNode("UnaryExpr", null, tempContent.get(0).line);
+                                                for (int j = 0; j < 2; j++) {
+                                                    ASTNode tempNode = tempContent.get(j);
+                                                    if (tempNode.type.equals("IDENT")) {
+                                                        tempNode.type = "VariableName";
+                                                    } else {
+                                                        tempNode.type = "Operator";
+                                                    }
+                                                    forChildNode.addChild(tempNode);
+                                                }
+                                            } else {
+                                                Collections.reverse(tempContent);
+                                                forChildNode = buildExpressionTreeList(tempContent);
+                                            }
+                                            DeclarationNode.addChild(forChildNode);
+                                        }
+
+                                        tempStack.clear();
+                                        System.out.println("forstmt 조건 파싱 완료\n");
+
+                                        //2. {}안의 내용들 파싱
+                                        Tokenizer.Token nextToken = tokens.get(i + 1);
+
+                                        if (nextToken.value.equals("{")) {
+                                            System.out.println("{ 안의 요소들 파싱 시작\n");
+                                            ParseResult blockNode = buildBlockNode(tokens, i + 1);
+                                            DeclarationNode.addChild(blockNode.astNode);
+                                            i = blockNode.index; //리팩토링 후 i index 갱신
+                                            astStack.push(DeclarationNode);
+                                            System.out.println("{ 안의 토큰 파싱 완료\n");
+
+                                        } else {
+                                            astStack.push(DeclarationNode);
                                         }
                                         tempStack.clear();
                                     }
+                                    case "while" -> {
+                                        DeclarationNode = new ASTNode("WhileStmt", null, token.line);
+                                        tempStack.pop();
 
-                                } else if (prev.value.equals("for")) {
+                                        // 2.()안의 조건 토큰들 파싱하고 whileChdild의 child로 추가
+                                        //; 기준이 아닌 ( 토큰 만날 때 까지 파싱 -> ()안의 임시 저장 리스트 content의 토큰들 파싱
+                                        //괄호와 같이 묶이는 경우는 일단 패스..
+                                        ASTNode whileChild;
+                                        int j = 0;
+                                        // while 문의 조건이 한 개의 원소로 이루어져 있지 않다면 -> symbol 등의 연산자를 통해 파싱
+                                        if (content.size() > 1) {
+                                            System.out.println("buildExpressionTreeList 함수 실행 시작\n");
+                                            ASTNode whileChildNode = buildExpressionTreeList(content);
+                                            System.out.println("buildExpressionTreeList 함수 실행 완료\n");
+                                            DeclarationNode.addChild(whileChildNode);
 
-                                    //1. for loop의 ()안의 token들 파싱 후 Forstmt의 child로 추가
-                                    Collections.reverse(content);
-                                    System.out.println("Forstmt 조건 파싱 시작\n");
-                                    DeclarationNode = new ASTNode("ForStmt", null, token.line);
-                                    tempStack.pop();
-                                    List<ASTNode> tempContent = new ArrayList<>();
-                                    for (int j = 0; j < content.size(); j++) {
-                                        if (content.get(j).value.equals(";")) {
-                                            System.out.println("tempContentSize: " + tempContent.size() + "\n");
-                                            Collections.reverse(tempContent);
-                                            ASTNode forChildNode = buildExpressionTreeList(tempContent);
-                                            DeclarationNode.addChild(forChildNode);
-                                            tempContent.clear();
                                         } else {
-                                            tempContent.add(content.get(j));
+                                            whileChild = new ASTNode("VariableName", content.get(j).value, content.get(j).line);
+                                            DeclarationNode.addChild(whileChild);
                                         }
-                                    }
+                                        tempStack.clear();
 
-                                    System.out.println("tempContent의 크기: " + tempContent.size() + "\n");
-                                    if (!tempContent.isEmpty()) {
-                                        System.out.println("buildExpressionTreeList함수 실행\n");
-                                        ASTNode forChildNode;
-                                        if (tempContent.size() == 2) {
-                                            forChildNode = new ASTNode("UnaryExpr", null, tempContent.get(0).line);
-                                            for (int j = 0; j < 2; j++) {
-                                                ASTNode tempNode = tempContent.get(j);
-                                                if (tempNode.type.equals("IDENT")) {
-                                                    tempNode.type = "VariableName";
-                                                } else {
-                                                    tempNode.type = "Operator";
-                                                }
-                                                forChildNode.addChild(tempNode);
-                                            }
+                                        //3. While 이후 {}안의 내용들 파싱
+                                        Tokenizer.Token nextToken = tokens.get(i + 1);
+                                        // 다음 토큰이 { 이라면 { 안의 토큰들 파싱
+                                        if (nextToken.value.equals("{")) {
+
+                                            System.out.println("buildBlockNode 함수 실행 시작\n");
+                                            ParseResult blockNode = buildBlockNode(tokens, i + 1);
+                                            System.out.println("buildBlockNode 함수 실행 완료\n");
+                                            DeclarationNode.addChild(blockNode.astNode);
+                                            i = blockNode.index; //리팩토링 후 i index 갱신
+                                            astStack.push(DeclarationNode);
+                                            System.out.println("{ 안의 토큰 파싱 완료\n");
+
                                         } else {
-                                            Collections.reverse(tempContent);
-                                            forChildNode = buildExpressionTreeList(tempContent);
+                                            astStack.push(DeclarationNode);
                                         }
-                                        DeclarationNode.addChild(forChildNode);
-                                    }
-
-                                    tempStack.clear();
-                                    System.out.println("forstmt 조건 파싱 완료\n");
-
-                                    //2. {}안의 내용들 파싱
-                                    Tokenizer.Token nextToken = tokens.get(i + 1);
-
-                                    if (nextToken.value.equals("{")) {
-                                        System.out.println("{ 안의 요소들 파싱 시작\n");
-                                        ParseResult blockNode = buildBlockNode(tokens, i + 1);
-                                        DeclarationNode.addChild(blockNode.astNode);
-                                        i = blockNode.index; //리팩토링 후 i index 갱신
-                                        astStack.push(DeclarationNode);
-                                        System.out.println("{ 안의 토큰 파싱 완료\n");
-
-                                    } else {
-                                        astStack.push(DeclarationNode);
-                                    }
-                                    tempStack.clear();
-
-                                } else if (prev.value.equals("while")) {
-                                    DeclarationNode = new ASTNode("WhileStmt", null, token.line);
-                                    tempStack.pop();
-
-                                    // 2.()안의 조건 토큰들 파싱하고 whileChdild의 child로 추가
-                                    //; 기준이 아닌 ( 토큰 만날 때 까지 파싱 -> ()안의 임시 저장 리스트 content의 토큰들 파싱
-                                    //괄호와 같이 묶이는 경우는 일단 패스..
-                                    ASTNode whileChild;
-                                    int j = 0;
-                                    // while 문의 조건이 한 개의 원소로 이루어져 있지 않다면 -> symbol 등의 연산자를 통해 파싱
-                                    if (content.size() > 1) {
-                                        System.out.println("buildExpressionTreeList 함수 실행 시작\n");
-                                        ASTNode whileChildNode = buildExpressionTreeList(content);
-                                        System.out.println("buildExpressionTreeList 함수 실행 완료\n");
-                                        DeclarationNode.addChild(whileChildNode);
-
-                                    } else {
-                                        whileChild = new ASTNode("VariableName", content.get(j).value, content.get(j).line);
-                                        DeclarationNode.addChild(whileChild);
-                                    }
-                                    tempStack.clear();
-
-                                    //3. While 이후 {}안의 내용들 파싱
-                                    Tokenizer.Token nextToken = tokens.get(i + 1);
-                                    // 다음 토큰이 { 이라면 { 안의 토큰들 파싱
-                                    if (nextToken.value.equals("{")) {
-
-                                        System.out.println("buildBlockNode 함수 실행 시작\n");
-                                        ParseResult blockNode = buildBlockNode(tokens, i + 1);
-                                        System.out.println("buildBlockNode 함수 실행 완료\n");
-                                        DeclarationNode.addChild(blockNode.astNode);
-                                        i = blockNode.index; //리팩토링 후 i index 갱신
-                                        astStack.push(DeclarationNode);
-                                        System.out.println("{ 안의 토큰 파싱 완료\n");
-
-                                    } else {
-                                        astStack.push(DeclarationNode);
                                     }
                                 }
                                 tempStack.clear();
-
                             } else { //B. ( 앞의 토큰이 조건문에 해당하지 않는다면 함수
                                 //1. 소괄호 안의 토큰(함수의 파라미터)들 파싱
                                 //소괄호 토큰 ( 이후 인덱스에 해당하는 토큰들(파라미터)을 paramList ASTNode객체의 children으로 추가
