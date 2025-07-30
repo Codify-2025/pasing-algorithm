@@ -136,7 +136,7 @@ public class Main {
         }
         
         """;
-
+        long startTime = System.currentTimeMillis();
         List<Tokenizer.Token> tokens = tokenize(code9);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
@@ -144,6 +144,11 @@ public class Main {
         System.out.println("parsing");
 
         Parser.ASTNode astNode = parse(tokens);
+        long endTime = System.currentTimeMillis();
+        long durationTime = endTime - startTime;
+
+        long startTime2 = System.currentTimeMillis();
+
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(astNode);
 
@@ -151,6 +156,13 @@ public class Main {
 
         System.out.println("=== 최종 AST 구조 ===");
         printAST(astNode, "");
+
+        long endTime2 = System.currentTimeMillis();
+
+        long durationTime2 = endTime2 - startTime2;
+        System.out.println("=== 파싱 소요 시간 ===" + durationTime + "m/s" + "\n");
+
+        System.out.println("=== AST 탐색 소요 시간 ===" + durationTime2 + "m/s");
 
     }
 }
