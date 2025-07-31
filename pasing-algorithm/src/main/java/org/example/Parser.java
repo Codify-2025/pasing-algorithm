@@ -561,7 +561,7 @@ public class Parser {
                 case "{" -> {
                     ParseResult reResult = buildBlock(tempDeque, tokens, i);
                     blockStmt.addChild(reResult.astNode);
-                    i = reResult.index;
+                    i = reResult.index+1;
                     tempDeque.clear();
                 }
                 case "}" -> {
