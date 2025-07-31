@@ -109,7 +109,6 @@ public class Main {
         """;
 
         String code7 = """  
-        int k = 0;
         for(int i=0; i < 3 ; i++) {
             k++;
             }
@@ -137,7 +136,7 @@ public class Main {
         
         """;
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code9);
+        List<Tokenizer.Token> tokens = tokenize(code6);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
