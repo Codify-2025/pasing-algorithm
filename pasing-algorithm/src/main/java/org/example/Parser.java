@@ -71,6 +71,8 @@ public class Parser {
         parsingTable.put("SYMBOL:<=", "S");
         parsingTable.put("SYMBOL:&&", "S");
         parsingTable.put("SYMBOL:,", "S");
+        parsingTable.put("SYMBOL:[", "S");
+        parsingTable.put("SYMBOL:]", "S");
         parsingTable.put("KEYWORD:if", "S");
         parsingTable.put("KEYWORD:for", "S");
         parsingTable.put("HEADER", "R_Header"); //#include, #define, using
@@ -120,6 +122,53 @@ public class Parser {
             }
         }
         return resultNode;
+    }
+
+    //배열 파싱 함수
+    public static ASTNode buildArray(Deque<ASTNode> tempDeque) {
+        ASTNode isType = tempDeque.removeLast();
+        ASTNode parent;
+        //배열 호출
+        if (isType.type.equals("IDENT")) {
+            parent = new ASTNode("ArrayAccessExpr", null, isType.line);
+            isType.type = "VariableName";
+            parent.addChild(isType);
+
+            //[]안 토큰 파싱
+            int length = tempDeque.size();
+            for (int i = 0; i < length; i++) {
+                ASTNode arrNode = tempDeque.removeLast();
+                if (!arrNode.type.equals("SYMBOL")) {
+                    arrNode.type = "VariableName";
+                    parent.addChild(arrNode);
+                }
+            }
+
+        } else { //배열 생성
+            parent = new ASTNode("VariableDeclaration", null, isType.line);
+            isType.type = "Type";
+
+            ASTNode declaration = new ASTNode("ArrayDeclarator", null, isType.line);
+
+            ASTNode variableName = tempDeque.removeLast();
+            variableName.type = "VariableName";
+
+            declaration.addChild(variableName);
+
+            //[]안 토큰 파싱
+            int length = tempDeque.size();
+            for (int i = 0; i < length; i++) {
+                ASTNode arrNode = tempDeque.removeLast();
+                if (!arrNode.type.equals("SYMBOL")) {
+                    arrNode.type = "ArraySize";
+                    declaration.addChild(arrNode);
+                }
+            }
+            parent.addChild(isType);
+            parent.addChild(declaration);
+        }
+
+        return parent;
     }
 
     //연산자 탐색 함수
@@ -380,6 +429,7 @@ public class Parser {
 
         boolean isMethodCall = false;
         boolean isReturn = false;
+        boolean isArray = false;
 
         ASTNode innerParent = new ASTNode("VariableDeclaration", null, firstNode.line);
 
@@ -389,6 +439,8 @@ public class Parser {
             isMethodCall = true;
         } else if (firstNode.value.equals("return")) {
             isReturn = true;
+        } else if (lastNode.value.equals("]")) {
+            isArray = true;
         }
 
         Deque<ASTNode> leftDeque = new ArrayDeque<>();
@@ -408,6 +460,9 @@ public class Parser {
         if (foundEqual) {
             ASTNode rightExpr;
             ASTNode assign;
+            if (rightDeque.getFirst().value.equals("]")) {
+                isArray = true;
+            }
             if (isMethodCall) {
                 ASTNode fuctionName = rightDeque.removeLast();
                 fuctionName.type = "FunctionName";
@@ -419,6 +474,10 @@ public class Parser {
                 methodCall.addChild(fuctionName);
                 methodCall.addChild(rightExpr);
                 assign.addChild(methodCall);
+            } else if (isArray) {
+                ASTNode arrayNode = buildArray(rightDeque);
+                assign = new ASTNode("InitExpr", "=", arrayNode.line);
+                assign.addChild(arrayNode);
             } else {
                 rightExpr = buildExpressionTree(rightDeque);
 
@@ -426,24 +485,34 @@ public class Parser {
                 assign.addChild(rightExpr);
             }
 
-            int length = leftDeque.size();
-            for (int l = 0; l < length; l++) {
-                ASTNode leftNode = leftDeque.removeLast();
-                String type = leftNode.type;
-
-                switch (type) {
-                    case "IDENT" -> {
-                        leftNode.type = "VariableName";
-                    }
-                    case "NUMBER" -> {
-                        leftNode.type = "Literal";
-                    }
-                    case "TYPE" -> {
-                        leftNode.type = "Type";
-                    }
-                }
-                innerParent.addChild(leftNode);
+            if (leftDeque.getFirst().value.equals("]")) {
+                isArray = true;
             }
+
+            if (isArray) {
+                ASTNode arrayNode = buildArray(leftDeque);
+                innerParent = arrayNode;
+            } else {
+                int length = leftDeque.size();
+                for (int l = 0; l < length; l++) {
+                    ASTNode leftNode = leftDeque.removeLast();
+                    String type = leftNode.type;
+
+                    switch (type) {
+                        case "IDENT" -> {
+                            leftNode.type = "VariableName";
+                        }
+                        case "NUMBER" -> {
+                            leftNode.type = "Literal";
+                        }
+                        case "TYPE" -> {
+                            leftNode.type = "Type";
+                        }
+                    }
+                    innerParent.addChild(leftNode);
+                }
+            }
+
             innerParent.addChild(assign);
         } else {
             if (isMethodCall) {
@@ -460,6 +529,9 @@ public class Parser {
                 leftDeque.removeLast();
                 ASTNode returnNode = buildExpressionTree(leftDeque);
                 innerParent.addChild(returnNode);
+            } else if (isArray) {
+                ASTNode arrayNode = buildArray(leftDeque);
+                innerParent = arrayNode;
             } else {
                 int length = leftDeque.size();
                 for (int l = 0; l < length; l++) {

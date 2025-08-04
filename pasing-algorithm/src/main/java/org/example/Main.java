@@ -149,8 +149,16 @@ public class Main {
             add(4,5);
         
         """;
+
+        String code11 = """
+        
+        int main() {
+            int arr[10][20];
+            arr[i][j] = i+i;
+        }
+        """;
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code10);
+        List<Tokenizer.Token> tokens = tokenize(code11);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
