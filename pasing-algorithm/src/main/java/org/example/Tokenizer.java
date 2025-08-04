@@ -47,7 +47,7 @@ public class Tokenizer {
 
     private static final Set<String> CXX = new HashSet<>(Arrays.asList(
             "class", "struct",
-            "new", "delete", "this", "namespace", "using",
+            "new", "delete", "this", "namespace",
             "const", "static", "virtual"
     ));
 
@@ -56,8 +56,14 @@ public class Tokenizer {
     ));
 
     private static final Set<String> OTHERS = new HashSet<>(Arrays.asList(
-            "true", "false", "sizeof", "include", "typedef", "inline", "enum"
+            "true", "false", "sizeof", "typedef", "inline", "enum"
     ));
+
+
+    private static final Set<String> HEADER = new HashSet<>(Arrays.asList(
+            "include", "using", "define"
+    ));
+
 
     //단어가 예약어인지 확인하는 method -> KEYWORD에 포함되어 있다면 true, 없다면 false
     private static boolean isKeyword(String word) {
@@ -240,6 +246,8 @@ public class Tokenizer {
                             type = "EXCEPTION";
                         } else if (OTHERS.contains(value)) {
                             type = "OTHERS";
+                        } else if (HEADER.contains(value)) {
+                            type = "HEADER";
                         } else {
                             type = "IDENT";
                         }

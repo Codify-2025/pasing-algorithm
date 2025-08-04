@@ -73,6 +73,7 @@ public class Parser {
         parsingTable.put("SYMBOL:,", "S");
         parsingTable.put("KEYWORD:if", "S");
         parsingTable.put("KEYWORD:for", "S");
+        parsingTable.put("HEADER", "R_Header"); //#include, #define, using
         parsingTable.put("EOF", "ACCEPT");
     }
 
@@ -528,6 +529,33 @@ public class Parser {
                     i = parseResult.index;
                     tempDeque.clear();
                     i++;
+                }
+                case "R_Header" -> {
+                    String value = token.value;
+                    switch (value) {
+                        case "include" -> {
+                            token.type = "IncludeDirective";
+                        }
+                        case "define" -> {
+                            token.type = "MacroDefinition";
+                        }
+                        case "using" -> {
+                            token.type = "UsingDeclaration";
+                        }
+                    }
+                    int line = token.line;
+                    ASTNode header = new ASTNode(token.type, null, line);
+                    int index = i+1;
+                    StringBuilder sb = new StringBuilder();
+                    Tokenizer.Token nextToken = tokens.get(index);
+                    while (token.line == nextToken.line) {
+                        sb.append(nextToken.value);
+                        index++;
+                        nextToken = tokens.get(index);
+                    }
+                    header.value = sb.toString();
+                    astList.add(header);
+                    i = index;
                 }
                 case "ERROR" -> {
                     ASTNode errorNode = new ASTNode("ErrorNode", token.value, token.line);

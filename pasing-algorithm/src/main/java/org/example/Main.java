@@ -19,6 +19,7 @@ public class Main {
     public static void main(String[] args) {
         String code = """
         #include <iostream>
+        #define MAX_SIZE 100
         using namespace std;
 
         int add(int a, int b) {
@@ -141,12 +142,15 @@ public class Main {
         """;
 
         String code10 = """
+        #include <iostream>
+        #define MAX_SIZE 100
+        using namespace std;
         
             add(4,5);
         
         """;
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code4);
+        List<Tokenizer.Token> tokens = tokenize(code10);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
