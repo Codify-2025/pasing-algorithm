@@ -146,7 +146,7 @@ public class Main {
         
         """;
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code9);
+        List<Tokenizer.Token> tokens = tokenize(code4);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }

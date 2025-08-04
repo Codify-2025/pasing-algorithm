@@ -378,14 +378,16 @@ public class Parser {
         ASTNode lastNode = tempDeque.getFirst();
 
         boolean isMethodCall = false;
+        boolean isReturn = false;
 
         ASTNode innerParent = new ASTNode("VariableDeclaration", null, firstNode.line);
 
         if (firstNode.type.equals("IDENT") && isUnaryExpr(secondNode.value)) {
             innerParent.type = "UnaryExpr";
         } else if (lastNode.value.equals(")")) {
-//            innerParent.type = "MethodCallExpr";
             isMethodCall = true;
+        } else if (firstNode.value.equals("return")) {
+            isReturn = true;
         }
 
         Deque<ASTNode> leftDeque = new ArrayDeque<>();
@@ -452,6 +454,11 @@ public class Parser {
 
                 innerParent.addChild(functionName);
                 innerParent.addChild(leftNode);
+            } else if (isReturn) {
+                innerParent.type = "ReturnStmt";
+                leftDeque.removeLast();
+                ASTNode returnNode = buildExpressionTree(leftDeque);
+                innerParent.addChild(returnNode);
             } else {
                 int length = leftDeque.size();
                 for (int l = 0; l < length; l++) {
@@ -469,7 +476,7 @@ public class Parser {
                             leftNode.type = "Type";
                         }
                         case "SYMBOL" -> {
-                            if(isOperator(leftNode.value)) {
+                            if (isOperator(leftNode.value)) {
                                 leftNode.type = "Operator";
                             }
                         }
