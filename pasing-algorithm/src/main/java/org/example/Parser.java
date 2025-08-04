@@ -104,6 +104,23 @@ public class Parser {
         return value.equals("++") || value.equals("--") || value.equals("!");
     }
 
+    //method call 파싱 함수
+    public static ASTNode buildMethodCall(Deque<ASTNode> tempDeque) {
+        // ()를 제거
+        ASTNode resultNode = new ASTNode("Arguments", null, tempDeque.removeLast().line);
+
+        tempDeque.removeFirst();
+        int length = tempDeque.size();
+        for (int i = 0; i < length; i++) {
+            ASTNode node = tempDeque.removeLast();
+            if (!node.value.equals(",")) {
+                node.type = "VariableName";
+                resultNode.addChild(node);
+            }
+        }
+        return resultNode;
+    }
+
     //연산자 탐색 함수
     public static ASTNode buildExpressionTree(Deque<ASTNode> tempDeque) {
         Deque<ASTNode> nodeDeque = new ArrayDeque<>();
@@ -360,12 +377,15 @@ public class Parser {
         tempDeque.offerLast(firstNode);
         ASTNode lastNode = tempDeque.getFirst();
 
+        boolean isMethodCall = false;
+
         ASTNode innerParent = new ASTNode("VariableDeclaration", null, firstNode.line);
 
         if (firstNode.type.equals("IDENT") && isUnaryExpr(secondNode.value)) {
             innerParent.type = "UnaryExpr";
         } else if (lastNode.value.equals(")")) {
-            innerParent.type = "MethodDeclaration";
+//            innerParent.type = "MethodCallExpr";
+            isMethodCall = true;
         }
 
         Deque<ASTNode> leftDeque = new ArrayDeque<>();
@@ -383,10 +403,25 @@ public class Parser {
         }
 
         if (foundEqual) {
-            ASTNode rightExpr = buildExpressionTree(rightDeque);
+            ASTNode rightExpr;
+            ASTNode assign;
+            if (isMethodCall) {
+                ASTNode fuctionName = rightDeque.removeLast();
+                fuctionName.type = "FunctionName";
+                rightExpr = buildMethodCall(rightDeque);
 
-            ASTNode assign = new ASTNode("InitExpr", "=", rightExpr.line);
-            assign.addChild(rightExpr);
+                ASTNode methodCall = new ASTNode("MethodCallExpr", null, rightExpr.line);
+
+                assign = new ASTNode("InitExpr", "=", rightExpr.line);
+                methodCall.addChild(fuctionName);
+                methodCall.addChild(rightExpr);
+                assign.addChild(methodCall);
+            } else {
+                rightExpr = buildExpressionTree(rightDeque);
+
+                assign = new ASTNode("InitExpr", "=", rightExpr.line);
+                assign.addChild(rightExpr);
+            }
 
             int length = leftDeque.size();
             for (int l = 0; l < length; l++) {
@@ -408,28 +443,39 @@ public class Parser {
             }
             innerParent.addChild(assign);
         } else {
-            int length = leftDeque.size();
-            for (int l = 0; l < length; l++) {
-                ASTNode leftNode = leftDeque.removeLast();
-                String type = leftNode.type;
+            if (isMethodCall) {
+                innerParent.type = "MethodCallExpr";
+                ASTNode functionName = leftDeque.removeLast();
+                functionName.type = "FunctionName";
 
-                switch (type) {
-                    case "IDENT" -> {
-                        leftNode.type = "VariableName";
-                    }
-                    case "NUMBER" -> {
-                        leftNode.type = "Literal";
-                    }
-                    case "TYPE" -> {
-                        leftNode.type = "Type";
-                    }
-                    case "SYMBOL" -> {
-                        if(isOperator(leftNode.value)) {
-                            leftNode.type = "Operator";
+                ASTNode leftNode = buildMethodCall(leftDeque);
+
+                innerParent.addChild(functionName);
+                innerParent.addChild(leftNode);
+            } else {
+                int length = leftDeque.size();
+                for (int l = 0; l < length; l++) {
+                    ASTNode leftNode = leftDeque.removeLast();
+                    String type = leftNode.type;
+
+                    switch (type) {
+                        case "IDENT" -> {
+                            leftNode.type = "VariableName";
+                        }
+                        case "NUMBER" -> {
+                            leftNode.type = "Literal";
+                        }
+                        case "TYPE" -> {
+                            leftNode.type = "Type";
+                        }
+                        case "SYMBOL" -> {
+                            if(isOperator(leftNode.value)) {
+                                leftNode.type = "Operator";
+                            }
                         }
                     }
+                    innerParent.addChild(leftNode);
                 }
-                innerParent.addChild(leftNode);
             }
         }
         return new ParseResult(innerParent, index+1);

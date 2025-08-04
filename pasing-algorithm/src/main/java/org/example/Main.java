@@ -131,13 +131,22 @@ public class Main {
         }
         
         int main () {
-            int k;
+            int x = 3;
+            int y = 4;
+            int k = add(3,4);
             k++;
+            add(4,5);
         }
         
         """;
+
+        String code10 = """
+        
+            add(4,5);
+        
+        """;
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code6);
+        List<Tokenizer.Token> tokens = tokenize(code9);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
