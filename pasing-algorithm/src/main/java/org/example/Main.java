@@ -116,6 +116,7 @@ public class Main {
 
         String code8 = """  
         int k = 0;
+        k++;
         if( k < 5) {
             k++;
         }else{
