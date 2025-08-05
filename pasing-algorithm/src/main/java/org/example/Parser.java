@@ -51,6 +51,7 @@ public class Parser {
         parsingTable.put("IDENT", "S"); //함수명, 변수명
         parsingTable.put("NUMBER", "S");
         parsingTable.put("STRING", "S");
+        parsingTable.put("BREAK", "S");
         parsingTable.put("SYMBOL:(", "S"); //소괄호 열기 -> 함수 정의 or 함수 call
         parsingTable.put("SYMBOL:)", "S"); //소괄호 닫기
         parsingTable.put("SYMBOL:{", "R_Block"); //대괄호 열기
@@ -70,11 +71,15 @@ public class Parser {
         parsingTable.put("SYMBOL:<", "S");
         parsingTable.put("SYMBOL:<=", "S");
         parsingTable.put("SYMBOL:&&", "S");
+        parsingTable.put("SYMBOL:>>", "S");
+        parsingTable.put("SYMBOL:<<", "S");
         parsingTable.put("SYMBOL:,", "S");
         parsingTable.put("SYMBOL:[", "S");
         parsingTable.put("SYMBOL:]", "S");
         parsingTable.put("KEYWORD:if", "S");
         parsingTable.put("KEYWORD:for", "S");
+        parsingTable.put("KEYWORD:switch", "S");
+        parsingTable.put("KEYWORD:case", "S");
         parsingTable.put("HEADER", "R_Header"); //#include, #define, using
         parsingTable.put("EOF", "ACCEPT");
     }
@@ -107,20 +112,120 @@ public class Parser {
         return value.equals("++") || value.equals("--") || value.equals("!");
     }
 
-    //method call 파싱 함수
-    public static ASTNode buildMethodCall(Deque<ASTNode> tempDeque) {
-        // ()를 제거
-        ASTNode resultNode = new ASTNode("Arguments", null, tempDeque.removeLast().line);
+    //switch 파싱 함수
+    //blockStmt에 붙이고, index만 리턴
+    public static Integer bulidSwitch(List<Tokenizer.Token> tokens, int index,ASTNode blockStmt) {
+        Deque<ASTNode> tempDeque = new ArrayDeque<>();
+        boolean isCase = false;
+        boolean breakpoint = false;
 
-        tempDeque.removeFirst();
-        int length = tempDeque.size();
-        for (int i = 0; i < length; i++) {
-            ASTNode node = tempDeque.removeLast();
-            if (!node.value.equals(",")) {
-                node.type = "VariableName";
-                resultNode.addChild(node);
+        Tokenizer.Token firstToken = tokens.get(index);
+        if (firstToken.value.equals("case")) {
+            ASTNode firstNode = new ASTNode(firstToken.type, firstToken.value, firstToken.line);
+            tempDeque.push(firstNode);
+        } else {
+            System.out.println("parsing error " + firstToken.value);
+        }
+        index++;
+
+        while (!breakpoint) {
+            Tokenizer.Token nodeToken = tokens.get(index);
+            ASTNode node = new ASTNode(nodeToken.type, nodeToken.value, nodeToken.line);
+
+            if (node.value.equals("case")) {
+                isCase = true;
+            }
+            if (node.value.equals("}")) {
+                breakpoint = true;
+            }
+
+            if (isCase) {
+                //case + 조건 파싱
+                ASTNode caseNode = tempDeque.removeLast();
+                caseNode.type = "SwitchEntry";
+                ASTNode literalNode = tempDeque.removeLast();
+                if (literalNode.type.equals("STRING")) {
+                    literalNode.type = "StringLiteral";
+                } else {
+                    literalNode.type = "Literal";
+                }
+
+                caseNode.addChild(literalNode);
+
+                //case 조건이 맞으면 실행하는 토큰들 파싱
+                int length = tempDeque.size();
+                for (int i = 0; i < length; i++) {
+                    Deque<ASTNode> nodeTempDeque = new ArrayDeque<>();
+                    ASTNode tempNode = tempDeque.removeLast();
+                    if (tempNode.value.equals(";")) {
+                        ParseResult parseResult = buildStmtNode(nodeTempDeque,i);
+                        caseNode.addChild(parseResult.astNode);
+                    } else {
+                        nodeTempDeque.push(tempNode);
+                    }
+                }
+                isCase = false;
+            } else {
+                tempDeque.push(node);
+            }
+            index++;
+        }
+        //default문 파싱 or case문 파싱(마지막에 남은거 파싱)
+
+        return index;
+
+    }
+
+    //method call 파싱 함수
+    public static ASTNode buildMethodCall(Deque<ASTNode> tempDeque, boolean isIO) {
+        // ()를 제거
+        ASTNode resultNode = new ASTNode("Arguments", null, tempDeque.getLast().line);
+        if (!isIO) {
+            tempDeque.removeFirst();
+            tempDeque.removeLast();
+            int length = tempDeque.size();
+            for (int i = 0; i < length; i++) {
+                ASTNode node = tempDeque.removeLast();
+                if (!node.value.equals(",")) {
+                    node.type = "VariableName";
+                    resultNode.addChild(node);
+                }
+            }
+        } else {
+            int length = tempDeque.size();
+            for (int i = 0; i < length; i++) {
+                ASTNode node = tempDeque.removeLast();
+                String type = node.type;
+
+                boolean isIoSymbol = false;
+                if (node.value.equals(">>") || node.value.equals("<<")) {
+                    isIoSymbol = true;
+                }
+                if (!isIoSymbol) {
+                    switch (type) {
+                        case "IDENT" -> {
+                            node.type = "VariableName";
+                        }
+                        case "NUMBER" -> {
+                            node.type = "Literal";
+                        }
+                        case "TYPE" -> {
+                            node.type = "Type";
+                        }
+                        case "STRING" -> {
+                            node.type = "StringLiteral";
+                        }
+                        case "SYMBOL" -> {
+                            if (isOperator(node.value)) {
+                                node.type = "Operator";
+                            }
+                        }
+                    }
+                    resultNode.addChild(node);
+                }
             }
         }
+
         return resultNode;
     }
 
@@ -251,6 +356,8 @@ public class Parser {
         //선언부 파싱
         ASTNode declaration = tempDeque.removeLast();
 
+        //switch 문 파싱 여부 결정
+        boolean isSwitch = false;
         String declarationType = declaration.value;
         switch (declaration.value) {
             case "if" -> {
@@ -327,6 +434,39 @@ public class Parser {
                     forTempDeque.clear();
                 }
             }
+            case "switch" -> {
+                isSwitch = true;
+                declaration.type = "SwitchStmt";
+
+                //()제거
+                tempDeque.removeLast();
+                tempDeque.removeFirst();
+
+                //()안의 토큰 파싱
+                ASTNode node = tempDeque.removeLast();
+                String type = node.type;
+                switch (type) {
+                    case "IDENT" -> {
+                        node.type = "VariableName";
+                    }
+                    case "NUMBER" -> {
+                        node.type = "Literal";
+                    }
+                    case "TYPE" -> {
+                        node.type = "Type";
+                    }
+                    case "STRING" -> {
+                        node.type = "StringLiteral";
+                    }
+                    case "SYMBOL" -> {
+                        if (isOperator(node.value)) {
+                            node.type = "Operator";
+                        }
+                    }
+                }
+
+                declaration.addChild(node);
+            }
             default -> {
                 ASTNode methodType = new ASTNode("Type", declaration.value, declaration.line);
                 ASTNode methodName = tempDeque.removeLast();
@@ -392,6 +532,9 @@ public class Parser {
         while (breakpoint) {
             Tokenizer.Token token = tokens.get(i);
             String action = token.value;
+            if (isSwitch) {
+                action = "switch";
+            }
             switch (action) {
                 case ";" -> {
                     ParseResult result = buildStmtNode(tempDeque, index);
@@ -408,6 +551,13 @@ public class Parser {
                 case "}" -> {
                     breakpoint = false;
                 }
+                case "switch" -> {
+                    int switchIndex = bulidSwitch(tokens, i,blockStmt);
+
+                    //}의 index를 출력 -> }까지 파싱한 후 }의 이전 인덱스로 갱신
+                    i =switchIndex-1;
+                    tempDeque.clear();
+                }
                 default -> {
                     tempDeque.push(new ASTNode(token.type, token.value, token.line));
                     i++;
@@ -423,20 +573,32 @@ public class Parser {
     //;만났을때 파싱하는 함수
     public static ParseResult buildStmtNode(Deque<ASTNode> tempDeque, int index) {
         ASTNode firstNode = tempDeque.removeLast();
-        ASTNode secondNode = tempDeque.getLast();
+        ASTNode secondNode = new ASTNode(firstNode.type, firstNode.value, firstNode.line);
+        if (!tempDeque.isEmpty()) {
+            secondNode = tempDeque.getLast();
+        }
         tempDeque.offerLast(firstNode);
         ASTNode lastNode = tempDeque.getFirst();
 
         boolean isMethodCall = false;
         boolean isReturn = false;
         boolean isArray = false;
+        boolean isBreak = false;
+        boolean isIO = false;
 
-        ASTNode innerParent = new ASTNode("VariableDeclaration", null, firstNode.line);
+        ASTNode innerParent = new ASTNode("VariableName", null, firstNode.line);
 
         if (firstNode.type.equals("IDENT") && isUnaryExpr(secondNode.value)) {
             innerParent.type = "UnaryExpr";
+        } else if (firstNode.type.equals("TYPE")) {
+            innerParent.type = "VariableDeclaration";
+        } else if (firstNode.value.equals("break")) {
+            isBreak = true;
         } else if (lastNode.value.equals(")")) {
             isMethodCall = true;
+        } else if (firstNode.type.equals("IO")) {
+            isMethodCall = true;
+            isIO = true;
         } else if (firstNode.value.equals("return")) {
             isReturn = true;
         } else if (lastNode.value.equals("]")) {
@@ -466,7 +628,7 @@ public class Parser {
             if (isMethodCall) {
                 ASTNode fuctionName = rightDeque.removeLast();
                 fuctionName.type = "FunctionName";
-                rightExpr = buildMethodCall(rightDeque);
+                rightExpr = buildMethodCall(rightDeque,isIO);
 
                 ASTNode methodCall = new ASTNode("MethodCallExpr", null, rightExpr.line);
 
@@ -520,7 +682,7 @@ public class Parser {
                 ASTNode functionName = leftDeque.removeLast();
                 functionName.type = "FunctionName";
 
-                ASTNode leftNode = buildMethodCall(leftDeque);
+                ASTNode leftNode = buildMethodCall(leftDeque,isIO);
 
                 innerParent.addChild(functionName);
                 innerParent.addChild(leftNode);
@@ -532,6 +694,9 @@ public class Parser {
             } else if (isArray) {
                 ASTNode arrayNode = buildArray(leftDeque);
                 innerParent = arrayNode;
+            } else if (isBreak) {
+                innerParent.type = "BreakStmt";
+                innerParent.value = firstNode.value;
             } else {
                 int length = leftDeque.size();
                 for (int l = 0; l < length; l++) {
@@ -583,7 +748,10 @@ public class Parser {
                 }
                 case "R_Stmt" -> {
                     ASTNode firstNode = tempDeque.removeLast();
-                    ASTNode secondNode = tempDeque.getLast();
+                    ASTNode secondNode = new ASTNode(firstNode.type, firstNode.value, firstNode.line);
+                    if (!tempDeque.isEmpty()) {
+                        secondNode = tempDeque.getLast();
+                    }
                     tempDeque.offerLast(firstNode);
                     if (firstNode.value.equals("for")) {
                         tempDeque.push(new ASTNode(token.type, token.value, token.line));

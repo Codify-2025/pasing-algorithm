@@ -157,8 +157,26 @@ public class Main {
             arr[i][j] = i+i;
         }
         """;
+
+        String code12 = """
+        
+        cout << "hello" ;
+        std::cout << "Hello" << std::endl;
+        a<b;
+        c>d;
+        a;
+        """;
+
+        String code13 = """
+        int a;
+        a = a + b;
+        b;
+        break;
+        cout << "hello" ;
+        """;
+
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code11);
+        List<Tokenizer.Token> tokens = tokenize(code13);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
