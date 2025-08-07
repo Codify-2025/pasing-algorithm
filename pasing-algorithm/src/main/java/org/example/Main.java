@@ -175,8 +175,112 @@ public class Main {
         cout << "hello" ;
         """;
 
+        String code14 = """
+          switch (result) {
+            case 10:
+                cout << "Ten\\n";
+                break;
+            default:
+                cout << "Other\\n";
+          }
+          }
+                """;
+
+        String code15 = """
+                int main() {
+                     switch (result) {
+                        case 10:
+                            cout << "Ten\\n";
+                            break;
+                        default:
+                            cout << "Other\\n";
+                      }
+                    return result;
+                }
+                      """;
+
+        String code16 = """
+                #include <iostream>
+                #define MAX_SIZE 100
+                using std::cout;
+                                
+                int add(int a, int b) {
+                    return a + b;
+                }
+                                
+                int main() {
+                    int x = 5;
+                    int y = 10;
+                    int result = add(x, y);
+                                
+                    int arr[MAX_SIZE];
+                    for (int i = 0; i < 3; i++) {
+                        arr[i] = i * i;
+                    }
+                                
+                    switch (result) {
+                        case 10:
+                            cout << "Ten\\n";
+                            break;
+                        case 15:
+                            cout << "Fifteen\\n";
+                            break;
+                        default:
+                            cout << "Other\\n";
+                    }
+                                
+                    return 0;
+                }
+                                
+                """;
+
+        String code17 = """                                       
+                int main() {
+                  int add(int a, int b) {
+                    return a + b;
+                   }
+                  int result = add(x, y);
+                  return result;
+                }
+                                
+                """;
+
+        String code18 = """                                       
+                int main() {
+                  int add(int a, int b) {
+                    return a + b;
+                   }
+                  int result = add(x, y);
+                  return result;
+                }
+                                
+                """;
+
+        String code19 = """        
+        int main() {
+            int x = 5;
+            int y = 10;
+            int sum = add(x, y);
+
+            if (sum > 10) {
+                cout << "Sum is greater than 10" << endl;
+            } else {
+                cout << "Sum is 10 or less" << endl;
+            }
+
+            return 0;
+        }
+        """;
+
+
+        String code20 = """
+              
+                int arr[MAX_SIZE];
+                arr[3];                
+                """;
+
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code13);
+        List<Tokenizer.Token> tokens = tokenize(code16);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }
