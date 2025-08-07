@@ -19,6 +19,7 @@ public class Main {
     public static void main(String[] args) {
         String code = """
         #include <iostream>
+        #define MAX_SIZE 100
         using namespace std;
 
         int add(int a, int b) {
@@ -131,13 +132,155 @@ public class Main {
         }
         
         int main () {
-            int k;
+            int x = 3;
+            int y = 4;
+            int k = add(3,4);
             k++;
+            add(4,5);
         }
         
         """;
+
+        String code10 = """
+        #include <iostream>
+        #define MAX_SIZE 100
+        using namespace std;
+        
+            add(4,5);
+        
+        """;
+
+        String code11 = """
+        
+        int main() {
+            int arr[10][20];
+            arr[i][j] = i+i;
+        }
+        """;
+
+        String code12 = """
+        
+        cout << "hello" ;
+        std::cout << "Hello" << std::endl;
+        a<b;
+        c>d;
+        a;
+        """;
+
+        String code13 = """
+        int a;
+        a = a + b;
+        b;
+        break;
+        cout << "hello" ;
+        """;
+
+        String code14 = """
+          switch (result) {
+            case 10:
+                cout << "Ten\\n";
+                break;
+            default:
+                cout << "Other\\n";
+          }
+          }
+                """;
+
+        String code15 = """
+                int main() {
+                     switch (result) {
+                        case 10:
+                            cout << "Ten\\n";
+                            break;
+                        default:
+                            cout << "Other\\n";
+                      }
+                    return result;
+                }
+                      """;
+
+        String code16 = """
+                #include <iostream>
+                #define MAX_SIZE 100
+                using std::cout;
+                                
+                int add(int a, int b) {
+                    return a + b;
+                }
+                                
+                int main() {
+                    int x = 5;
+                    int y = 10;
+                    int result = add(x, y);
+                                
+                    int arr[MAX_SIZE];
+                    for (int i = 0; i < 3; i++) {
+                        arr[i] = i * i;
+                    }
+                                
+                    switch (result) {
+                        case 10:
+                            cout << "Ten\\n";
+                            break;
+                        case 15:
+                            cout << "Fifteen\\n";
+                            break;
+                        default:
+                            cout << "Other\\n";
+                    }
+                                
+                    return 0;
+                }
+                                
+                """;
+
+        String code17 = """                                       
+                int main() {
+                  int add(int a, int b) {
+                    return a + b;
+                   }
+                  int result = add(x, y);
+                  return result;
+                }
+                                
+                """;
+
+        String code18 = """                                       
+                int main() {
+                  int add(int a, int b) {
+                    return a + b;
+                   }
+                  int result = add(x, y);
+                  return result;
+                }
+                                
+                """;
+
+        String code19 = """        
+        int main() {
+            int x = 5;
+            int y = 10;
+            int sum = add(x, y);
+
+            if (sum > 10) {
+                cout << "Sum is greater than 10" << endl;
+            } else {
+                cout << "Sum is 10 or less" << endl;
+            }
+
+            return 0;
+        }
+        """;
+
+
+        String code20 = """
+              
+                int arr[MAX_SIZE];
+                arr[3];                
+                """;
+
         long startTime = System.currentTimeMillis();
-        List<Tokenizer.Token> tokens = tokenize(code6);
+        List<Tokenizer.Token> tokens = tokenize(code16);
         for (Tokenizer.Token token : tokens) {
             System.out.println(token);
         }

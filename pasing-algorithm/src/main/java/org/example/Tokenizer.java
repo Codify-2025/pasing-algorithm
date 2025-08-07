@@ -38,7 +38,7 @@ public class Tokenizer {
 
     private static final Set<String> IO = new HashSet<>(Arrays.asList(
             //입출력
-            "cin", "cout", "endl"
+            "cin", "cout", "endl", "std::cout", "std::endl", "cin >>", "cout <<"
     ));
 
     private static final Set<String> ACCESS = new HashSet<>(Arrays.asList(
@@ -47,7 +47,7 @@ public class Tokenizer {
 
     private static final Set<String> CXX = new HashSet<>(Arrays.asList(
             "class", "struct",
-            "new", "delete", "this", "namespace", "using",
+            "new", "delete", "this", "namespace",
             "const", "static", "virtual"
     ));
 
@@ -56,8 +56,20 @@ public class Tokenizer {
     ));
 
     private static final Set<String> OTHERS = new HashSet<>(Arrays.asList(
-            "true", "false", "sizeof", "include", "typedef", "inline", "enum"
+            "true", "false", "sizeof", "typedef", "inline", "enum"
     ));
+
+
+    private static final Set<String> HEADER = new HashSet<>(Arrays.asList(
+            "include", "using", "define"
+    ));
+
+    private static final Set<String> BREAK = new HashSet<>(Arrays.asList(
+            "break"
+    ));
+
+
+
 
     //단어가 예약어인지 확인하는 method -> KEYWORD에 포함되어 있다면 true, 없다면 false
     private static boolean isKeyword(String word) {
@@ -217,11 +229,31 @@ public class Tokenizer {
                     if (Character.isLetter(c) || c == '_') {
                         int startColumn = column;
                         StringBuilder sb = new StringBuilder();
-                        while (current < code.length() && (Character.isLetterOrDigit(code.charAt(current)) || code.charAt(current) == '_')) {
-                            sb.append(code.charAt(current));
-                            current++;
-                            column++;
+//                        while (current < code.length() && (Character.isLetterOrDigit(code.charAt(current)) || code.charAt(current) == '_')) {
+//                            sb.append(code.charAt(current));
+//                            current++;
+//                            column++;
+//                        }
+                        while (current < code.length()) {
+                            char ch = code.charAt(current);
+
+                            // 알파벳, 숫자, 언더스코어
+                            if (Character.isLetterOrDigit(ch) || ch == '_') {
+                                sb.append(ch);
+                                current++;
+                                column++;
+                            }
+                            // 네임스페이스 연산자 ::
+                            else if (ch == ':' && current + 1 < code.length() && code.charAt(current + 1) == ':') {
+                                sb.append("::");
+                                current += 2;
+                                column += 2;
+                            }
+                            else {
+                                break; // 토큰 경계
+                            }
                         }
+
                         String value = sb.toString();
 //                        String type = isKeyword(value) ? "KEYWORD" : "IDENT";
                         //구조체는 따로 빼기
@@ -240,6 +272,8 @@ public class Tokenizer {
                             type = "EXCEPTION";
                         } else if (OTHERS.contains(value)) {
                             type = "OTHERS";
+                        } else if (HEADER.contains(value)) {
+                            type = "HEADER";
                         } else {
                             type = "IDENT";
                         }
@@ -257,7 +291,8 @@ public class Tokenizer {
                                 twoChar.equals("==") || twoChar.equals("!=") ||
                                 twoChar.equals("<=") || twoChar.equals(">=") ||
                                 twoChar.equals("++") || twoChar.equals("--") ||
-                                twoChar.equals("+=") || twoChar.equals("-=")) {
+                                twoChar.equals("+=") || twoChar.equals("-=") ||
+                                twoChar.equals(">>") || twoChar.equals("<<")) {
                             tokens.add(new Token("SYMBOL", twoChar, line, column));
                             current += 2;
                             column += 2;
