@@ -496,6 +496,7 @@ public class Parser {
                         ASTNode forChild;
                         if (isequal) {
                             forChild = buildStmtNode(forTempDeque, index).astNode;
+                            isequal = false;
                         } else {
                             forChild = buildExpressionTree(forTempDeque);
                         }
@@ -558,7 +559,7 @@ public class Parser {
             default -> {
                 ASTNode methodType = new ASTNode("Type", declaration.value, declaration.line);
                 ASTNode methodName = tempDeque.removeLast();
-                methodName.type = "MethodName";
+                methodName.type = "FunctionName";
                 ASTNode paramList = new ASTNode("ParameterList", null, methodName.line);
 
                 declaration.type = "MethodDeclaration";
